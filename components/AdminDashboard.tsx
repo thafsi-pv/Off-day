@@ -439,28 +439,91 @@ const UserManagement: React.FC = () => {
         setShowPasswordDialog(true);
     };
 
-    const handleConfirmResetPassword = () => {
-        if (!resetPasswordUserId) return;
+    // const handleConfirmResetPassword = () => {
+    //     if (!resetPasswordUserId) return;
         
-        const newPassword = customPassword.trim() || undefined;
+    //     const newPassword = customPassword.trim() || undefined;
         
-        toast.promise(
-            resetPasswordMutation.mutateAsync({ userId: resetPasswordUserId, newPassword }) as Promise<{ success: boolean; newPassword?: string; message: string }>,
-            {
-                loading: 'Resetting password...',
-                success: (data: { success: boolean; newPassword?: string; message: string }) => {
-                    setShowPasswordDialog(false);
-                    setResetPasswordUserId(null);
-                    setCustomPassword('');
-                    if (data.newPassword) {
-                        return `Password reset! New password: ${data.newPassword}`;
-                    }
-                    return data.message || 'Password has been reset successfully.';
-                },
-                error: (error: any) => error.response?.data?.message || 'Failed to reset password.',
-            }
-        ).catch(() => {});
+    //     toast.promise(
+    //         resetPasswordMutation.mutateAsync({ userId: resetPasswordUserId, newPassword }) as Promise<{ success: boolean; newPassword?: string; message: string }>,
+    //         {
+    //             loading: 'Resetting password...',
+    //             success: (data: { success: boolean; newPassword?: string; message: string }) => {
+    //                 setShowPasswordDialog(false);
+    //                 setResetPasswordUserId(null);
+    //                 setCustomPassword('');
+    //                 if (data.newPassword) {
+    //                     return `Password reset! New password: ${data.newPassword}`;
+    //                 }
+    //                 return data.message || 'Password has been reset successfully.';
+    //             },
+    //             error: (error: any) => error.response?.data?.message || 'Failed to reset password.',
+    //         }
+    //     ).catch(() => {});
+    // };
+
+    const handleConfirmResetPassword = async () => {
+      if (!resetPasswordUserId) return;
+    
+      const newPassword = customPassword.trim() || undefined;
+      const id = toast.loading('Resetting password...');
+    
+      try {
+        const data = await resetPasswordMutation.mutateAsync({
+          userId: resetPasswordUserId,
+          newPassword,
+        });
+    
+        setShowPasswordDialog(false);
+        setResetPasswordUserId(null);
+        setCustomPassword('');
+    
+        // Show a custom toast (won’t auto-close)
+        toast.custom((t) => (
+          <div
+            className={`${
+              t.visible ? 'animate-enter' : 'animate-leave'
+            } bg-white dark:bg-gray-900 shadow-lg rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col gap-3 max-w-md`}
+          >
+            <p className="text-gray-800 dark:text-white font-semibold">
+              ✅ Password Reset Successful
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              {data.newPassword
+                ? `New password: ${data.newPassword}`
+                : data.message || 'Password has been reset successfully.'}
+            </p>
+    
+            <div className="flex justify-end gap-3 mt-2">
+              {data.newPassword && (
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(data.newPassword!);
+                    toast.success('Copied!');
+                  }}
+                  className="text-sm bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition-all"
+                >
+                  Copy
+                </button>
+              )}
+              <button
+                onClick={() => toast.dismiss(t.id)}
+                className="text-sm bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        ), {
+          duration: Infinity, // won’t auto-close
+          id, // replaces the loading toast
+        });
+    
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Failed to reset password.', { id });
+      }
     };
+    
 
     const handleCancelResetPassword = () => {
         setShowPasswordDialog(false);

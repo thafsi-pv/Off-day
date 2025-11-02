@@ -1,6 +1,6 @@
 # OffDay Frontend
 
-React 18 frontend for the OffDay roster management system.
+React 18 frontend for the OffDay leave management system.
 
 ## Setup
 

@@ -7,6 +7,7 @@ import AdminDashboard from './components/AdminDashboard';
 import LeaveHistory from './components/LeaveHistory';
 import { SunIcon, MoonIcon } from './components/icons';
 import { Button } from './components/ui';
+import { IoIosLogOut } from 'react-icons/io';
 
 const ThemeToggle: React.FC<{ theme: string; toggleTheme: () => void }> = ({ theme, toggleTheme }) => (
     <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
@@ -104,15 +105,15 @@ const App: React.FC = () => {
     return (
         <div className="min-h-screen w-full bg-secondary/50">
             <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <div className="container h-14 flex items-center justify-between">
+                <div className="container h-14 flex items-center justify-between px-4">
                     <div className="flex items-center gap-2">
                         <span className="font-bold text-lg">OffDay</span>
-                        <span className="text-sm bg-primary/10 text-primary px-2 py-0.5 rounded-full">{currentUser.role}</span>
+                        <span className="text-sm bg-primary/10 text-primary px-2 py-0.5 rounded-full">{currentUser.name}</span>
                     </div>
                     <div className="flex items-center gap-4">
                         <span className="hidden sm:inline">Welcome, {currentUser.name}</span>
                         <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
-                        <Button variant="outline" size="sm" onClick={handleLogout}>Logout</Button>
+                        <Button variant="link" size="sm" onClick={handleLogout}><IoIosLogOut className="h-5 w-5" /></Button>
                     </div>
                 </div>
             </header>

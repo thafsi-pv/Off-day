@@ -90,10 +90,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
   const loginForm = (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl">Login to LeaveSync</CardTitle>
+        <CardTitle className="text-2xl">Login to Off-day</CardTitle>
         <CardDescription>
           Enter your credentials to access your account. <br />
-          (admin: admin@test.com, pw: password)
+          (admin: admin@test.com, pw: admin123)
         </CardDescription>
       </CardHeader>
       <CardContent>
