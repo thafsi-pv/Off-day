@@ -96,7 +96,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
           (admin: admin@test.com, pw: admin123)
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="">
         <form onSubmit={handleLogin} className="grid gap-4">
            {loginError && (
             <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-md p-3" role="alert">
@@ -213,7 +213,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
   );
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-secondary/50">
+    <div className="flex items-center justify-center min-h-screen bg-secondary/50 px-4">
         <Tabs className="w-full max-w-sm">
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger onClick={() => { setActiveTab('login'); setRegisterError(null); }} active={activeTab === 'login'}>Login</TabsTrigger>
