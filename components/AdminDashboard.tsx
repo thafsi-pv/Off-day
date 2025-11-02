@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar } from 'recharts';
 import { toast } from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import { User, Config, Leave, LeaveStatus, Shift, UserStatus } from '../types';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Select, Tabs, TabsContent, TabsList, TabsTrigger } from './ui';
 import { BarChartIcon, ListIcon, SettingsIcon, DownloadIcon, UsersIcon } from './icons';
@@ -209,16 +211,7 @@ const Reports: React.FC<{ leaves: Leave[] }> = ({ leaves }) => {
                 return;
             }
             try {
-                const jspdfModule = (window as any).jspdf;
-                if (!jspdfModule || typeof jspdfModule.jsPDF !== 'function') {
-                    throw new Error("jsPDF library is not loaded correctly.");
-                }
-                const { jsPDF } = jspdfModule;
                 const doc = new jsPDF();
-
-                if (typeof (doc as any).autoTable !== 'function') {
-                    throw new Error("jsPDF-AutoTable plugin is not loaded. It might be a script loading issue.");
-                }
 
                 doc.text("Leave Report", 14, 15);
 
@@ -231,6 +224,7 @@ const Reports: React.FC<{ leaves: Leave[] }> = ({ leaves }) => {
                     formatDate(leave.createdAt)
                 ]);
 
+                // autoTable is added to jsPDF instance by jspdf-autotable import
                 (doc as any).autoTable({
                     head: [tableColumn],
                     body: tableRows,
