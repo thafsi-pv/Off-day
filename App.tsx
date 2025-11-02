@@ -127,6 +127,7 @@ const App: React.FC = () => {
             position="top-right"
             toastOptions={{
                 className: '',
+                position: 'top-center',
                 style: {
                     borderRadius: '0.5rem',
                     background: 'hsl(var(--card))',

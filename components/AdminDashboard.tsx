@@ -239,7 +239,7 @@ const Reports: React.FC<{ leaves: Leave[] }> = ({ leaves }) => {
                 toast.error(`Failed to generate PDF: ${message}`);
             }
         } else {
-            toast(`Exporting to ${format} is not implemented in this demo.`);
+            toast(`For export to ${format} you need to pay maaan...`);
         }
     };
 
