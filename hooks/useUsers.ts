@@ -24,3 +24,15 @@ export const useUpdateUserStatusMutation = (options?: any) => {
         ...options
     });
 };
+
+export const useResetUserPasswordMutation = (options?: any) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { userId: string, newPassword?: string }) =>
+            api.resetUserPassword(variables.userId, variables.newPassword),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['users', 'all'] });
+        },
+        ...options
+    });
+};

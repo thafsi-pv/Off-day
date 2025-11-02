@@ -6,10 +6,10 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { User, Config, Leave, LeaveStatus, Shift, UserStatus } from '../types';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Select, Tabs, TabsContent, TabsList, TabsTrigger } from './ui';
-import { BarChartIcon, ListIcon, SettingsIcon, DownloadIcon, UsersIcon } from './icons';
+import { BarChartIcon, ListIcon, SettingsIcon, DownloadIcon, UsersIcon, KeyIcon } from './icons';
 import { useAllLeaves, useUpdateLeaveStatusMutation, useUpdateMultipleLeaveStatusesMutation } from '../hooks/useLeaves';
 import { useConfig, useUpdateConfigMutation } from '../hooks/useConfig';
-import { useAllUsers, useUpdateUserStatusMutation } from '../hooks/useUsers';
+import { useAllUsers, useUpdateUserStatusMutation, useResetUserPasswordMutation } from '../hooks/useUsers';
 
 const getStatusBadge = (status: LeaveStatus) => {
     switch (status) {
@@ -417,6 +417,10 @@ const getUserStatusBadge = (status: UserStatus) => {
 const UserManagement: React.FC = () => {
     const { data: users, isLoading, isError } = useAllUsers();
     const updateUserStatusMutation = useUpdateUserStatusMutation();
+    const resetPasswordMutation = useResetUserPasswordMutation();
+    const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
+    const [customPassword, setCustomPassword] = useState('');
+    const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
     const handleUpdateUserStatus = (userId: string, status: UserStatus) => {
         toast.promise(
@@ -427,6 +431,41 @@ const UserManagement: React.FC = () => {
                 error: (error: any) => error.response?.data?.message || 'Failed to update user status.',
             }
         ).catch(() => {});
+    };
+
+    const handleResetPassword = (userId: string) => {
+        setResetPasswordUserId(userId);
+        setCustomPassword('');
+        setShowPasswordDialog(true);
+    };
+
+    const handleConfirmResetPassword = () => {
+        if (!resetPasswordUserId) return;
+        
+        const newPassword = customPassword.trim() || undefined;
+        
+        toast.promise(
+            resetPasswordMutation.mutateAsync({ userId: resetPasswordUserId, newPassword }) as Promise<{ success: boolean; newPassword?: string; message: string }>,
+            {
+                loading: 'Resetting password...',
+                success: (data: { success: boolean; newPassword?: string; message: string }) => {
+                    setShowPasswordDialog(false);
+                    setResetPasswordUserId(null);
+                    setCustomPassword('');
+                    if (data.newPassword) {
+                        return `Password reset! New password: ${data.newPassword}`;
+                    }
+                    return data.message || 'Password has been reset successfully.';
+                },
+                error: (error: any) => error.response?.data?.message || 'Failed to reset password.',
+            }
+        ).catch(() => {});
+    };
+
+    const handleCancelResetPassword = () => {
+        setShowPasswordDialog(false);
+        setResetPasswordUserId(null);
+        setCustomPassword('');
     };
 
     if (isLoading) {
@@ -468,27 +507,74 @@ const UserManagement: React.FC = () => {
                                     <Button size="sm" variant="outline" onClick={() => handleUpdateUserStatus(user.id, UserStatus.ACTIVE)} disabled={updateUserStatusMutation.isPending}>Approve</Button>
                                 )}
                                 {user.status === UserStatus.ACTIVE && (
-                                    <Button size="sm" variant="destructive" onClick={() => handleUpdateUserStatus(user.id, UserStatus.INACTIVE)} disabled={updateUserStatusMutation.isPending}>Deactivate</Button>
+                                    <>
+                                        <Button size="sm" variant="destructive" onClick={() => handleUpdateUserStatus(user.id, UserStatus.INACTIVE)} disabled={updateUserStatusMutation.isPending}>Deactivate</Button>
+                                        <Button size="sm" variant="outline" onClick={() => handleResetPassword(user.id)} disabled={resetPasswordMutation.isPending} title="Reset Password">
+                                            <KeyIcon className="w-4 h-4" />
+                                        </Button>
+                                    </>
                                 )}
                                  {user.status === UserStatus.INACTIVE && (
-                                    <Button size="sm" variant="secondary" onClick={() => handleUpdateUserStatus(user.id, UserStatus.ACTIVE)} disabled={updateUserStatusMutation.isPending}>Re-activate</Button>
+                                    <>
+                                        <Button size="sm" variant="secondary" onClick={() => handleUpdateUserStatus(user.id, UserStatus.ACTIVE)} disabled={updateUserStatusMutation.isPending}>Re-activate</Button>
+                                        <Button size="sm" variant="outline" onClick={() => handleResetPassword(user.id)} disabled={resetPasswordMutation.isPending} title="Reset Password">
+                                            <KeyIcon className="w-4 h-4" />
+                                        </Button>
+                                    </>
                                 )}
                             </div>
                         </div>
                     ))}
                 </div>
+                
+                {/* Password Reset Dialog */}
+                {showPasswordDialog && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <Card className="w-full max-w-md mx-4">
+                            <CardHeader>
+                                <CardTitle>Reset Password</CardTitle>
+                                <CardDescription>
+                                    Reset password for user. Leave blank to generate a random password.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="new-password">New Password (optional)</Label>
+                                    <Input
+                                        id="new-password"
+                                        type="text"
+                                        placeholder="Leave blank for auto-generated password"
+                                        value={customPassword}
+                                        onChange={(e) => setCustomPassword(e.target.value)}
+                                        minLength={6}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Minimum 6 characters. If left blank, a random 8-character password will be generated.
+                                    </p>
+                                </div>
+                                <div className="flex gap-2 justify-end">
+                                    <Button variant="outline" onClick={handleCancelResetPassword} disabled={resetPasswordMutation.isPending}>
+                                        Cancel
+                                    </Button>
+                                    <Button onClick={handleConfirmResetPassword} disabled={resetPasswordMutation.isPending || (customPassword.trim().length > 0 && customPassword.trim().length < 6)}>
+                                        {resetPasswordMutation.isPending ? 'Resetting...' : 'Reset Password'}
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
 };
 
 
-const AdminDashboard: React.FC<{ user: User, showToast: (message: string, type: 'success' | 'error' | 'info') => void }> = ({ user, showToast }) => {
+const AdminDashboard: React.FC<{ user: User, showToast: (message: string, type: 'success' | 'error' | 'info') => void }> = () => {
     const [activeTab, setActiveTab] = useState('management');
     
     const { data: allLeaves, isLoading: areLeavesLoading, isError: isLeavesError } = useAllLeaves();
     const { data: config, isLoading: isConfigLoading, isError: isConfigError } = useConfig();
-    const { data: users, isLoading: areUsersLoading } = useAllUsers({ enabled: activeTab === 'users' });
 
     const updateStatusMutation = useUpdateLeaveStatusMutation();
     const updateMultipleStatusesMutation = useUpdateMultipleLeaveStatusesMutation();
@@ -507,10 +593,9 @@ const AdminDashboard: React.FC<{ user: User, showToast: (message: string, type: 
 
     const handleBulkStatusChange = (variables: { leaveIds: string[], status: LeaveStatus.APPROVED | LeaveStatus.REJECTED }) => {
         toast.promise(
-            updateMultipleStatusesMutation.mutateAsync(variables),
+            updateMultipleStatusesMutation.mutateAsync(variables) as Promise<Leave[]>,
             {
                 loading: 'Updating selected leaves...',
-                // FIX: Property 'length' does not exist on type 'unknown'. Add type annotation for updatedData.
                 success: (updatedData: Leave[]) => `${updatedData.length} leave(s) have been ${variables.status.toLowerCase()}.`,
                 error: (error: any) => error.response?.data?.message || 'Failed to update leave statuses.'
             }

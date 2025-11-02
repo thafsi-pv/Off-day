@@ -21,6 +21,8 @@ export const register = (data: { name: string, email: string, password: string }
 // Users
 export const getAllUsers = (): Promise<User[]> => apiClient.get('/users').then(res => res.data);
 export const updateUserStatus = (userId: string, status: UserStatus): Promise<User> => apiClient.patch(`/users/${userId}/status`, { status }).then(res => res.data);
+export const resetUserPassword = (userId: string, newPassword?: string): Promise<{ success: boolean; newPassword?: string; message: string }> => 
+  apiClient.post(`/users/${userId}/reset-password`, { newPassword }).then(res => res.data);
 
 // Config
 export const getConfig = (): Promise<Config> => apiClient.get('/config').then(res => res.data);
