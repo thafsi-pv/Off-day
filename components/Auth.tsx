@@ -90,11 +90,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
   const loginForm = (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl">Login to Off-day</CardTitle>
-        <CardDescription>
-          Enter your credentials to access your account. <br />
-          (admin: admin@test.com, pw: admin123)
-        </CardDescription>
+        <CardTitle className="text-2xl">Sign in</CardTitle>
       </CardHeader>
       <CardContent className="">
         <form onSubmit={handleLogin} className="grid gap-4">
