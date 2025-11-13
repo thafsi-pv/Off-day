@@ -9,7 +9,8 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Inpu
 import { BarChartIcon, ListIcon, SettingsIcon, DownloadIcon, UsersIcon, KeyIcon } from './icons';
 import { useAllLeaves, useUpdateLeaveStatusMutation, useUpdateMultipleLeaveStatusesMutation } from '../hooks/useLeaves';
 import { useConfig, useUpdateConfigMutation } from '../hooks/useConfig';
-import { useAllUsers, useUpdateUserStatusMutation, useResetUserPasswordMutation } from '../hooks/useUsers';
+import { useAllUsers, useUpdateUserStatusMutation, useResetUserPasswordMutation, useUpdateUserMutation } from '../hooks/useUsers';
+import PhoneInput from 'react-phone-input-2';
 
 const getStatusBadge = (status: LeaveStatus) => {
     switch (status) {
@@ -414,72 +415,57 @@ const getUserStatusBadge = (status: UserStatus) => {
     }
 };
 
+
+
 const UserManagement: React.FC = () => {
-    const { data: users, isLoading, isError } = useAllUsers();
-    const updateUserStatusMutation = useUpdateUserStatusMutation();
-    const resetPasswordMutation = useResetUserPasswordMutation();
-    const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
-    const [customPassword, setCustomPassword] = useState('');
-    const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const { data: users, isLoading, isError } = useAllUsers();
+  const updateUserStatusMutation = useUpdateUserStatusMutation();
+  const resetPasswordMutation = useResetUserPasswordMutation();
+  const updateUserMutation = useUpdateUserMutation();
 
-    const handleUpdateUserStatus = (userId: string, status: UserStatus) => {
-        toast.promise(
-            updateUserStatusMutation.mutateAsync({ userId, status }),
-            {
-                loading: 'Updating user status...',
-                success: () => `User has been updated to ${status.toLowerCase()}.`,
-                error: (error: any) => error.response?.data?.message || 'Failed to update user status.',
-            }
-        ).catch(() => {});
-    };
+  const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
+  const [customPassword, setCustomPassword] = useState('');
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
-    const handleResetPassword = (userId: string) => {
-        setResetPasswordUserId(userId);
-        setCustomPassword('');
-        setShowPasswordDialog(true);
-    };
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState<{ name: string, mobile: string | undefined, email: string | undefined, status: UserStatus }>({ name: '', mobile: undefined, email: undefined, status: UserStatus.PENDING });
 
-    // const handleConfirmResetPassword = () => {
-    //     if (!resetPasswordUserId) return;
-        
-    //     const newPassword = customPassword.trim() || undefined;
-        
-    //     toast.promise(
-    //         resetPasswordMutation.mutateAsync({ userId: resetPasswordUserId, newPassword }) as Promise<{ success: boolean; newPassword?: string; message: string }>,
-    //         {
-    //             loading: 'Resetting password...',
-    //             success: (data: { success: boolean; newPassword?: string; message: string }) => {
-    //                 setShowPasswordDialog(false);
-    //                 setResetPasswordUserId(null);
-    //                 setCustomPassword('');
-    //                 if (data.newPassword) {
-    //                     return `Password reset! New password: ${data.newPassword}`;
-    //                 }
-    //                 return data.message || 'Password has been reset successfully.';
-    //             },
-    //             error: (error: any) => error.response?.data?.message || 'Failed to reset password.',
-    //         }
-    //     ).catch(() => {});
-    // };
+  // ===== STATUS UPDATE =====
+  const handleUpdateUserStatus = (userId: string, status: UserStatus) => {
+    toast.promise(
+      updateUserStatusMutation.mutateAsync({ userId, status }),
+      {
+        loading: 'Updating user status...',
+        success: () => `User has been updated to ${status.toLowerCase()}.`,
+        error: (error: any) => error.response?.data?.message || 'Failed to update user status.',
+      }
+    ).catch(() => {});
+  };
 
-    const handleConfirmResetPassword = async () => {
-      if (!resetPasswordUserId) return;
-    
-      const newPassword = customPassword.trim() || undefined;
-      const id = toast.loading('Resetting password...');
-    
-      try {
-        const data = await resetPasswordMutation.mutateAsync({
-          userId: resetPasswordUserId,
-          newPassword,
-        });
-    
-        setShowPasswordDialog(false);
-        setResetPasswordUserId(null);
-        setCustomPassword('');
-    
-        // Show a custom toast (won’t auto-close)
-        toast.custom((t) => (
+  // ===== PASSWORD RESET =====
+  const handleResetPassword = (userId: string) => {
+    setResetPasswordUserId(userId);
+    setCustomPassword('');
+    setShowPasswordDialog(true);
+  };
+
+  const handleConfirmResetPassword = async () => {
+    if (!resetPasswordUserId) return;
+    const newPassword = customPassword.trim() || undefined;
+    const id = toast.loading('Resetting password...');
+
+    try {
+      const data = await resetPasswordMutation.mutateAsync({
+        userId: resetPasswordUserId,
+        newPassword,
+      });
+
+      setShowPasswordDialog(false);
+      setResetPasswordUserId(null);
+      setCustomPassword('');
+
+      toast.custom(
+        (t) => (
           <div
             className={`${
               t.visible ? 'animate-enter' : 'animate-leave'
@@ -493,7 +479,7 @@ const UserManagement: React.FC = () => {
                 ? `New password: ${data.newPassword}`
                 : data.message || 'Password has been reset successfully.'}
             </p>
-    
+
             <div className="flex justify-end gap-3 mt-2">
               {data.newPassword && (
                 <button
@@ -514,123 +500,474 @@ const UserManagement: React.FC = () => {
               </button>
             </div>
           </div>
-        ), {
-          duration: Infinity, // won’t auto-close
-          id, // replaces the loading toast
-        });
-    
-      } catch (error: any) {
-        toast.error(error.response?.data?.message || 'Failed to reset password.', { id });
-      }
-    };
-    
-
-    const handleCancelResetPassword = () => {
-        setShowPasswordDialog(false);
-        setResetPasswordUserId(null);
-        setCustomPassword('');
-    };
-
-    if (isLoading) {
-        return (
-            <Card>
-                <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
-                <CardContent className="space-y-2">
-                    <Skeleton className="h-16 w-full" />
-                    <Skeleton className="h-16 w-full" />
-                    <Skeleton className="h-16 w-full" />
-                </CardContent>
-            </Card>
-        );
+        ),
+        {
+          duration: Infinity,
+          id,
+        }
+      );
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to reset password.', { id });
     }
-    if (isError || !users) return <div className="p-4 text-red-500">Failed to load users.</div>;
+  };
 
-    const sortedUsers = [...users].sort((a, b) => {
-        if (a.status === UserStatus.PENDING && b.status !== UserStatus.PENDING) return -1;
-        if (a.status !== UserStatus.PENDING && b.status === UserStatus.PENDING) return 1;
-        return a.name.localeCompare(b.name);
+  const handleCancelResetPassword = () => {
+    setShowPasswordDialog(false);
+    setResetPasswordUserId(null);
+    setCustomPassword('');
+  };
+
+  // ===== EDIT USER =====
+  const handleOpenEdit = (user: User) => {
+    setEditUser(user);
+    setEditForm({
+      name: user.name,
+      mobile: user.mobile || undefined,
+      email: user.email || undefined,
+      status: user.status,
     });
+  };
 
+  const handleEditChange = (field: string, value: string) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editUser) return;
+    if(!editForm.mobile || editForm.mobile === '' || editForm.mobile === undefined || editForm.mobile === null) {
+      toast.error('Mobile number is required');
+      return;
+    }
+    if(!editForm.name || editForm.name === '' || editForm.name === undefined || editForm.name === null) {
+      toast.error('Name is required');
+      return;
+    }
+    if(!editForm.status || editForm.status === undefined || editForm.status === null) {
+      toast.error('Status is required');
+      return;
+    }
+    toast.promise(
+      updateUserMutation.mutateAsync({
+        userId: editUser.id,
+        ...editForm,
+      }),
+      {
+        loading: 'Updating user...',
+        success: () => {
+          setEditUser(null);
+          return 'User details updated successfully!';
+        },
+        error: (error: any) => error.response?.data?.message || 'Failed to update user details.',
+      }
+    ).catch(() => {});
+  };
+
+  // ===== RENDER =====
+  if (isLoading) {
     return (
-         <Card>
-            <CardHeader>
-                <CardTitle>User Management</CardTitle>
-                <CardDescription>Approve new registrations and manage user access.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="border rounded-lg max-h-[70vh] overflow-y-auto">
-                    {sortedUsers.map(user => (
-                        <div key={user.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border-b last:border-b-0 gap-2">
-                            <div>
-                                <p className="font-semibold">{user.name} <span className="text-sm text-muted-foreground">({user.email})</span></p>
-                                <p className={`mt-1 text-xs font-semibold inline-block px-2 py-0.5 rounded-full ${getUserStatusBadge(user.status)}`}>{user.status}</p>
-                            </div>
-                            <div className="flex gap-2 flex-shrink-0 mt-2 sm:mt-0">
-                                {user.status === UserStatus.PENDING && (
-                                    <Button size="sm" variant="outline" onClick={() => handleUpdateUserStatus(user.id, UserStatus.ACTIVE)} disabled={updateUserStatusMutation.isPending}>Approve</Button>
-                                )}
-                                {user.status === UserStatus.ACTIVE && (
-                                    <>
-                                        <Button size="sm" variant="destructive" onClick={() => handleUpdateUserStatus(user.id, UserStatus.INACTIVE)} disabled={updateUserStatusMutation.isPending}>Deactivate</Button>
-                                        <Button size="sm" variant="outline" onClick={() => handleResetPassword(user.id)} disabled={resetPasswordMutation.isPending} title="Reset Password">
-                                            <KeyIcon className="w-4 h-4" />
-                                        </Button>
-                                    </>
-                                )}
-                                 {user.status === UserStatus.INACTIVE && (
-                                    <>
-                                        <Button size="sm" variant="secondary" onClick={() => handleUpdateUserStatus(user.id, UserStatus.ACTIVE)} disabled={updateUserStatusMutation.isPending}>Re-activate</Button>
-                                        <Button size="sm" variant="outline" onClick={() => handleResetPassword(user.id)} disabled={resetPasswordMutation.isPending} title="Reset Password">
-                                            <KeyIcon className="w-4 h-4" />
-                                        </Button>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                
-                {/* Password Reset Dialog */}
-                {showPasswordDialog && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                        <Card className="w-full max-w-md mx-4">
-                            <CardHeader>
-                                <CardTitle>Reset Password</CardTitle>
-                                <CardDescription>
-                                    Reset password for user. Leave blank to generate a random password.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="new-password">New Password (optional)</Label>
-                                    <Input
-                                        id="new-password"
-                                        type="text"
-                                        placeholder="Leave blank for auto-generated password"
-                                        value={customPassword}
-                                        onChange={(e) => setCustomPassword(e.target.value)}
-                                        minLength={6}
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                        Minimum 6 characters. If left blank, a random 8-character password will be generated.
-                                    </p>
-                                </div>
-                                <div className="flex gap-2 justify-end">
-                                    <Button variant="outline" onClick={handleCancelResetPassword} disabled={resetPasswordMutation.isPending}>
-                                        Cancel
-                                    </Button>
-                                    <Button onClick={handleConfirmResetPassword} disabled={resetPasswordMutation.isPending || (customPassword.trim().length > 0 && customPassword.trim().length < 6)}>
-                                        {resetPasswordMutation.isPending ? 'Resetting...' : 'Reset Password'}
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-8 w-1/2" />
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </CardContent>
+      </Card>
     );
+  }
+
+  if (isError || !users)
+    return <div className="p-4 text-red-500">Failed to load users.</div>;
+
+  const sortedUsers = [...users].sort((a, b) => {
+    if (a.status === UserStatus.PENDING && b.status !== UserStatus.PENDING) return -1;
+    if (a.status !== UserStatus.PENDING && b.status === UserStatus.PENDING) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>User Management</CardTitle>
+        <CardDescription>Approve new registrations and manage user access.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="border rounded-lg max-h-[70vh] overflow-y-auto">
+          {sortedUsers.map((user) => (
+            <div
+              key={user.id}
+              className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border-b last:border-b-0 gap-2"
+            >
+              <div>
+                <p className="font-semibold">
+                  {user.name}{' '}
+                  <span className="text-sm text-muted-foreground">
+                    ({formatMobileNumber(user.mobile || '') || user.email || 'N/A'})
+                  </span>
+                </p>
+                <p
+                  className={`mt-1 text-xs font-semibold inline-block px-2 py-0.5 rounded-full ${getUserStatusBadge(
+                    user.status
+                  )}`}
+                >
+                  {user.status}
+                </p>
+              </div>
+              <div className="flex gap-2 flex-shrink-0 mt-2 sm:mt-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleOpenEdit(user)}
+                  disabled={updateUserMutation.isPending}
+                >
+                  Edit
+                </Button>
+                {user.status === UserStatus.PENDING && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleUpdateUserStatus(user.id, UserStatus.ACTIVE)}
+                    disabled={updateUserStatusMutation.isPending}
+                  >
+                    Approve
+                  </Button>
+                )}
+                {user.status === UserStatus.ACTIVE && (
+                  <>
+                    {/* <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleUpdateUserStatus(user.id, UserStatus.INACTIVE)}
+                      disabled={updateUserStatusMutation.isPending}
+                    >
+                      Deactivate
+                    </Button> */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleResetPassword(user.id)}
+                      disabled={resetPasswordMutation.isPending}
+                      title="Reset Password"
+                    >
+                      <KeyIcon className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
+                {user.status === UserStatus.INACTIVE && (
+                  <>
+                    {/* <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleUpdateUserStatus(user.id, UserStatus.ACTIVE)}
+                      disabled={updateUserStatusMutation.isPending}
+                    >
+                      Re-activate
+                    </Button> */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleResetPassword(user.id)}
+                      disabled={resetPasswordMutation.isPending}
+                      title="Reset Password"
+                    >
+                      <KeyIcon className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ===== Edit User Modal with PhoneInput ===== */}
+        {editUser && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <Card className="w-full max-w-md mx-4">
+              <CardHeader>
+                <CardTitle>Edit User</CardTitle>
+                <CardDescription>Modify user details and save changes.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-2">
+                  <Label>Name</Label>
+                  <Input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => handleEditChange('name', e.target.value)}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>Mobile</Label>
+                  <PhoneInput
+                    country={'in'}
+                    value={editForm.mobile}
+                    onChange={(value) => handleEditChange('mobile', value)}
+                    inputProps={{ name: 'mobile', required: true }}
+                    disabled={updateUserMutation.isPending}
+                    inputClass="!w-full !py-5 !text-base !rounded-md !border-gray-200"
+                    buttonClass="!border-gray-200"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>Email (optional)</Label>
+                  <Input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => handleEditChange('email', e.target.value)}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={editForm.status}
+                    onChange={(e) => handleEditChange('status', e.target.value)}
+                  >
+                    <option value="ACTIVE">Approve</option>
+                    <option value="INACTIVE">Inactive</option>
+                    <option value="PENDING">Pending</option>
+                  </Select>
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setEditUser(null)} disabled={updateUserMutation.isPending}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveEdit} disabled={updateUserMutation.isPending}>
+                    {updateUserMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 };
+
+
+// const UserManagement: React.FC = () => {
+//     const { data: users, isLoading, isError } = useAllUsers();
+//     const updateUserStatusMutation = useUpdateUserStatusMutation();
+//     const resetPasswordMutation = useResetUserPasswordMutation();
+//     const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
+//     const [customPassword, setCustomPassword] = useState('');
+//     const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+
+//     const handleUpdateUserStatus = (userId: string, status: UserStatus) => {
+//         toast.promise(
+//             updateUserStatusMutation.mutateAsync({ userId, status }),
+//             {
+//                 loading: 'Updating user status...',
+//                 success: () => `User has been updated to ${status.toLowerCase()}.`,
+//                 error: (error: any) => error.response?.data?.message || 'Failed to update user status.',
+//             }
+//         ).catch(() => {});
+//     };
+
+//     const handleResetPassword = (userId: string) => {
+//         setResetPasswordUserId(userId);
+//         setCustomPassword('');
+//         setShowPasswordDialog(true);
+//     };
+
+//     // const handleConfirmResetPassword = () => {
+//     //     if (!resetPasswordUserId) return;
+        
+//     //     const newPassword = customPassword.trim() || undefined;
+        
+//     //     toast.promise(
+//     //         resetPasswordMutation.mutateAsync({ userId: resetPasswordUserId, newPassword }) as Promise<{ success: boolean; newPassword?: string; message: string }>,
+//     //         {
+//     //             loading: 'Resetting password...',
+//     //             success: (data: { success: boolean; newPassword?: string; message: string }) => {
+//     //                 setShowPasswordDialog(false);
+//     //                 setResetPasswordUserId(null);
+//     //                 setCustomPassword('');
+//     //                 if (data.newPassword) {
+//     //                     return `Password reset! New password: ${data.newPassword}`;
+//     //                 }
+//     //                 return data.message || 'Password has been reset successfully.';
+//     //             },
+//     //             error: (error: any) => error.response?.data?.message || 'Failed to reset password.',
+//     //         }
+//     //     ).catch(() => {});
+//     // };
+
+//     const handleConfirmResetPassword = async () => {
+//       if (!resetPasswordUserId) return;
+    
+//       const newPassword = customPassword.trim() || undefined;
+//       const id = toast.loading('Resetting password...');
+    
+//       try {
+//         const data = await resetPasswordMutation.mutateAsync({
+//           userId: resetPasswordUserId,
+//           newPassword,
+//         });
+    
+//         setShowPasswordDialog(false);
+//         setResetPasswordUserId(null);
+//         setCustomPassword('');
+    
+//         // Show a custom toast (won’t auto-close)
+//         toast.custom((t) => (
+//           <div
+//             className={`${
+//               t.visible ? 'animate-enter' : 'animate-leave'
+//             } bg-white dark:bg-gray-900 shadow-lg rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col gap-3 max-w-md`}
+//           >
+//             <p className="text-gray-800 dark:text-white font-semibold">
+//               ✅ Password Reset Successful
+//             </p>
+//             <p className="text-sm text-gray-600 dark:text-gray-300">
+//               {data.newPassword
+//                 ? `New password: ${data.newPassword}`
+//                 : data.message || 'Password has been reset successfully.'}
+//             </p>
+    
+//             <div className="flex justify-end gap-3 mt-2">
+//               {data.newPassword && (
+//                 <button
+//                   onClick={() => {
+//                     navigator.clipboard.writeText(data.newPassword!);
+//                     toast.success('Copied!');
+//                   }}
+//                   className="text-sm bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition-all"
+//                 >
+//                   Copy
+//                 </button>
+//               )}
+//               <button
+//                 onClick={() => toast.dismiss(t.id)}
+//                 className="text-sm bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"
+//               >
+//                 Close
+//               </button>
+//             </div>
+//           </div>
+//         ), {
+//           duration: Infinity, // won’t auto-close
+//           id, // replaces the loading toast
+//         });
+    
+//       } catch (error: any) {
+//         toast.error(error.response?.data?.message || 'Failed to reset password.', { id });
+//       }
+//     };
+    
+
+//     const handleCancelResetPassword = () => {
+//         setShowPasswordDialog(false);
+//         setResetPasswordUserId(null);
+//         setCustomPassword('');
+//     };
+
+//     if (isLoading) {
+//         return (
+//             <Card>
+//                 <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
+//                 <CardContent className="space-y-2">
+//                     <Skeleton className="h-16 w-full" />
+//                     <Skeleton className="h-16 w-full" />
+//                     <Skeleton className="h-16 w-full" />
+//                 </CardContent>
+//             </Card>
+//         );
+//     }
+//     if (isError || !users) return <div className="p-4 text-red-500">Failed to load users.</div>;
+
+//     const sortedUsers = [...users].sort((a, b) => {
+//         if (a.status === UserStatus.PENDING && b.status !== UserStatus.PENDING) return -1;
+//         if (a.status !== UserStatus.PENDING && b.status === UserStatus.PENDING) return 1;
+//         return a.name.localeCompare(b.name);
+//     });
+
+//     return (
+//          <Card>
+//             <CardHeader>
+//                 <CardTitle>User Management</CardTitle>
+//                 <CardDescription>Approve new registrations and manage user access.</CardDescription>
+//             </CardHeader>
+//             <CardContent>
+//                 <div className="border rounded-lg max-h-[70vh] overflow-y-auto">
+//                     {sortedUsers.map(user => (
+//                         <div key={user.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border-b last:border-b-0 gap-2">
+//                             <div>
+//                                 <p className="font-semibold">{user.name} <span className="text-sm text-muted-foreground">({formatMobileNumber(user.mobile || '') || user.email || 'N/A'})</span></p>
+//                                 <p className={`mt-1 text-xs font-semibold inline-block px-2 py-0.5 rounded-full ${getUserStatusBadge(user.status)}`}>{user.status}</p>
+//                             </div>
+//                             <div className="flex gap-2 flex-shrink-0 mt-2 sm:mt-0">
+//                                 {user.status === UserStatus.PENDING && (
+//                                     <Button size="sm" variant="outline" onClick={() => handleUpdateUserStatus(user.id, UserStatus.ACTIVE)} disabled={updateUserStatusMutation.isPending}>Approve</Button>
+//                                 )}
+//                                 {user.status === UserStatus.ACTIVE && (
+//                                     <>
+//                                         <Button size="sm" variant="destructive" onClick={() => handleUpdateUserStatus(user.id, UserStatus.INACTIVE)} disabled={updateUserStatusMutation.isPending}>Deactivate</Button>
+//                                         <Button size="sm" variant="outline" onClick={() => handleResetPassword(user.id)} disabled={resetPasswordMutation.isPending} title="Reset Password">
+//                                             <KeyIcon className="w-4 h-4" />
+//                                         </Button>
+//                                     </>
+//                                 )}
+//                                  {user.status === UserStatus.INACTIVE && (
+//                                     <>
+//                                         <Button size="sm" variant="secondary" onClick={() => handleUpdateUserStatus(user.id, UserStatus.ACTIVE)} disabled={updateUserStatusMutation.isPending}>Re-activate</Button>
+//                                         <Button size="sm" variant="outline" onClick={() => handleResetPassword(user.id)} disabled={resetPasswordMutation.isPending} title="Reset Password">
+//                                             <KeyIcon className="w-4 h-4" />
+//                                         </Button>
+//                                     </>
+//                                 )}
+//                             </div>
+//                         </div>
+//                     ))}
+//                 </div>
+                
+//                 {/* Password Reset Dialog */}
+//                 {showPasswordDialog && (
+//                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+//                         <Card className="w-full max-w-md mx-4">
+//                             <CardHeader>
+//                                 <CardTitle>Reset Password</CardTitle>
+//                                 <CardDescription>
+//                                     Reset password for user. Leave blank to generate a random password.
+//                                 </CardDescription>
+//                             </CardHeader>
+//                             <CardContent className="space-y-4">
+//                                 <div className="space-y-2">
+//                                     <Label htmlFor="new-password">New Password (optional)</Label>
+//                                     <Input
+//                                         id="new-password"
+//                                         type="text"
+//                                         placeholder="Leave blank for auto-generated password"
+//                                         value={customPassword}
+//                                         onChange={(e) => setCustomPassword(e.target.value)}
+//                                         minLength={6}
+//                                     />
+//                                     <p className="text-xs text-muted-foreground">
+//                                         Minimum 6 characters. If left blank, a random 8-character password will be generated.
+//                                     </p>
+//                                 </div>
+//                                 <div className="flex gap-2 justify-end">
+//                                     <Button variant="outline" onClick={handleCancelResetPassword} disabled={resetPasswordMutation.isPending}>
+//                                         Cancel
+//                                     </Button>
+//                                     <Button onClick={handleConfirmResetPassword} disabled={resetPasswordMutation.isPending || (customPassword.trim().length > 0 && customPassword.trim().length < 6)}>
+//                                         {resetPasswordMutation.isPending ? 'Resetting...' : 'Reset Password'}
+//                                     </Button>
+//                                 </div>
+//                             </CardContent>
+//                         </Card>
+//                     </div>
+//                 )}
+//             </CardContent>
+//         </Card>
+//     );
+// };
 
 
 const AdminDashboard: React.FC<{ user: User, showToast: (message: string, type: 'success' | 'error' | 'info') => void }> = () => {
@@ -762,3 +1099,21 @@ const AdminDashboard: React.FC<{ user: User, showToast: (message: string, type: 
 };
 
 export default AdminDashboard;
+
+export const formatMobileNumber = (number: string): string => {
+    // remove non-digits (just in case)
+    const digits = number.replace(/\D/g, '');
+  
+    // handle country code (assuming starts with 91)
+    if (!digits.startsWith('91')) return number;
+  
+    // Extract parts
+    const countryCode = digits.slice(0, 2);
+    const first = digits.slice(2, 6);
+    const second = digits.slice(6, 9);
+    const third = digits.slice(9);
+  
+    // Build formatted number
+    return `+${countryCode} ${first} ${second} ${third}`.trim();
+  };
+  

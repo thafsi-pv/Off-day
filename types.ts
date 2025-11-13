@@ -21,7 +21,8 @@ export type WeekRange = '1_WEEK' | '2_WEEKS' | '1_MONTH';
 export interface User {
   id: string;
   name: string;
-  email: string;
+  mobile?: string;
+  email?: string;
   role: Role;
   status: UserStatus;
 }

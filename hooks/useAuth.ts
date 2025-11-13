@@ -3,20 +3,52 @@ import { useMutation, UseMutationOptions } from '@tanstack/react-query';
 import * as api from '../services/api';
 import { User } from '../types';
 
+// type LoginCredentials = {
+//   email: string;
+//   password: string;
+// };
+
+// type RegisterCredentials = {
+//     name: string;
+//     email: string;
+//     password: string;
+// }
+
+// type UseLoginMutationOptions = Omit<UseMutationOptions<User, any, LoginCredentials>, 'mutationFn'>;
+// type UseRegisterMutationOptions = Omit<UseMutationOptions<User, any, RegisterCredentials>, 'mutationFn'>;
+
+
+// export const useLoginMutation = (options?: UseLoginMutationOptions) => {
+//   return useMutation({
+//     mutationFn: (credentials: LoginCredentials) => api.login(credentials),
+//     ...options,
+//   });
+// };
+
+// export const useRegisterMutation = (options?: UseRegisterMutationOptions) => {
+//     return useMutation({
+//         mutationFn: (credentials: RegisterCredentials) => api.register(credentials),
+//         ...options
+//     });
+// };
 type LoginCredentials = {
-  email: string;
+  mobile: string;
   password: string;
 };
 
 type RegisterCredentials = {
-    name: string;
-    email: string;
-    password: string;
-}
+  name: string;
+  mobile: string;
+  email?: string | null;
+  password: string;
+};
+
+// --- MUTATION TYPES ---
 
 type UseLoginMutationOptions = Omit<UseMutationOptions<User, any, LoginCredentials>, 'mutationFn'>;
 type UseRegisterMutationOptions = Omit<UseMutationOptions<User, any, RegisterCredentials>, 'mutationFn'>;
 
+// --- HOOKS ---
 
 export const useLoginMutation = (options?: UseLoginMutationOptions) => {
   return useMutation({
@@ -26,8 +58,8 @@ export const useLoginMutation = (options?: UseLoginMutationOptions) => {
 };
 
 export const useRegisterMutation = (options?: UseRegisterMutationOptions) => {
-    return useMutation({
-        mutationFn: (credentials: RegisterCredentials) => api.register(credentials),
-        ...options
-    });
+  return useMutation({
+    mutationFn: (credentials: RegisterCredentials) => api.register(credentials),
+    ...options,
+  });
 };

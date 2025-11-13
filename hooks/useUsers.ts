@@ -1,5 +1,5 @@
 
-import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
 import * as api from '../services/api';
 import { User, UserStatus } from '../types';
 
@@ -36,3 +36,24 @@ export const useResetUserPasswordMutation = (options?: any) => {
         ...options
     });
 };
+
+type UpdateUserData = {
+    userId: string;
+    name?: string;
+    mobile?: string;
+    email?: string;
+    status?: string;
+  };
+  
+  type UseUpdateUserMutationOptions = Omit<UseMutationOptions<User, any, UpdateUserData>, 'mutationFn'>;
+  
+  export const useUpdateUserMutation = (options?: UseUpdateUserMutationOptions) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+      mutationFn: ({ userId, ...data }: UpdateUserData) => api.updateUser(userId, data),
+      ...options,
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['users', 'all'] });
+      },
+    });
+  };

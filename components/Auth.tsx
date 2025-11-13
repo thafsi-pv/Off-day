@@ -1,6 +1,7 @@
-
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 import { User } from '../types';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Tabs, TabsContent, TabsList, TabsTrigger } from './ui';
 import { useLoginMutation, useRegisterMutation } from '../hooks/useAuth';
@@ -11,16 +12,17 @@ interface AuthProps {
 }
 
 const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
-  const [activeTab, setActiveTab] = useState('login');
+  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
 
-  // Login state
-  const [loginEmail, setLoginEmail] = useState('');
+  // Login
+  const [loginMobile, setLoginMobile] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  // Register state
+  // Register
   const [registerName, setRegisterName] = useState('');
+  const [registerMobile, setRegisterMobile] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerError, setRegisterError] = useState<string | null>(null);
@@ -28,27 +30,26 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
   const loginMutation = useLoginMutation();
   const registerMutation = useRegisterMutation();
 
+  // --- LOGIN ---
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
-    if (!loginEmail || !loginPassword) {
-      setLoginError('Please enter email and password.');
+
+    if (!loginMobile || !loginPassword) {
+      setLoginError('Please enter mobile and password.');
       return;
     }
 
     toast.promise(
-      loginMutation.mutateAsync({ email: loginEmail, password: loginPassword }),
+      loginMutation.mutateAsync({ mobile: loginMobile, password: loginPassword }),
       {
         loading: 'Logging in...',
         success: (user) => {
-          if (user) {
-            onLogin(user, rememberMe);
-            return `Welcome back, ${user.name}!`;
-          }
-          throw new Error("Login failed");
+          onLogin(user, rememberMe);
+          return `Welcome back, ${user.name}!`;
         },
         error: (error: any) => {
-          const message = error.response?.data?.message || 'Invalid credentials or account not active.';
+          const message = error.response?.data?.message || 'Invalid mobile number or password.';
           setLoginError(message);
           return message;
         },
@@ -56,30 +57,35 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
     ).catch(() => {});
   };
 
+  // --- REGISTER ---
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     setRegisterError(null);
-    if (!registerName || !registerEmail || !registerPassword) {
-      setRegisterError('Please fill in all fields.');
+
+    if (!registerName || !registerMobile || !registerPassword) {
+      setRegisterError('Please fill in all required fields.');
       return;
     }
 
     toast.promise(
-      registerMutation.mutateAsync({ name: registerName, email: registerEmail, password: registerPassword }),
+      registerMutation.mutateAsync({
+        name: registerName,
+        email: registerEmail || null,
+        mobile: registerMobile,
+        password: registerPassword,
+      }),
       {
         loading: 'Registering...',
         success: () => {
           setActiveTab('login');
           setRegisterName('');
           setRegisterEmail('');
+          setRegisterMobile('');
           setRegisterPassword('');
-          setRegisterError(null);
-          setLoginEmail(registerEmail);
-          setLoginPassword('');
-          return 'Registration successful! Your account is now pending admin approval.';
+          return 'Registration successful! Awaiting admin approval.';
         },
         error: (error: any) => {
-          const message = error.response?.data?.message || 'Registration failed. Please try again.';
+          const message = error.response?.data?.message || 'Registration failed. Try again.';
           setRegisterError(message);
           return message;
         },
@@ -87,29 +93,27 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
     ).catch(() => {});
   };
 
+  // --- FORMS ---
   const loginForm = (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl">Sign in</CardTitle>
+        <CardTitle className="text-2xl">Sign In</CardTitle>
       </CardHeader>
-      <CardContent className="">
+      <CardContent>
         <form onSubmit={handleLogin} className="grid gap-4">
-           {loginError && (
-            <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-md p-3" role="alert">
-                {loginError}
-            </div>
+          {loginError && (
+            <div className="bg-red-100 border border-red-300 text-red-600 text-sm rounded-md p-3">{loginError}</div>
           )}
           <div className="grid gap-2">
-            <Label htmlFor="email-login">Email</Label>
-            <Input
-              id="email-login"
-              type="email"
-              placeholder="m@example.com"
-              value={loginEmail}
-              onChange={(e) => setLoginEmail(e.target.value)}
+            <Label htmlFor="mobile-login">Mobile</Label>
+            <PhoneInput
+              country={'in'}
+              value={loginMobile}
+              onChange={(value) => setLoginMobile(value)}
+              inputProps={{ name: 'mobile', required: true }}
               disabled={loginMutation.isPending}
-              required
-              aria-describedby="login-error"
+              inputClass="!w-full !py-5 !text-base !rounded-md !border-gray-200"
+              buttonClass="!border-gray-200"
             />
           </div>
           <div className="grid gap-2">
@@ -121,7 +125,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
               onChange={(e) => setLoginPassword(e.target.value)}
               disabled={loginMutation.isPending}
               required
-              aria-describedby="login-error"
             />
           </div>
           <div className="flex items-center space-x-2">
@@ -136,7 +139,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
               Remember me
             </Label>
           </div>
-          {loginError && <p id="login-error" className="sr-only">{loginError}</p>}
           <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
             {loginMutation.isPending ? 'Logging in...' : 'Login'}
           </Button>
@@ -144,23 +146,19 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
       </CardContent>
     </Card>
   );
-  
+
   const registerForm = (
     <Card>
       <CardHeader>
         <CardTitle className="text-2xl">Create an Account</CardTitle>
-        <CardDescription>
-          After registering, an admin must approve your account.
-        </CardDescription>
+        <CardDescription>Admin approval is required after registration.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleRegister} className="grid gap-4">
           {registerError && (
-            <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-md p-3" role="alert">
-                {registerError}
-            </div>
+            <div className="bg-red-100 border border-red-300 text-red-600 text-sm rounded-md p-3">{registerError}</div>
           )}
-           <div className="grid gap-2">
+          <div className="grid gap-2">
             <Label htmlFor="name-register">Name</Label>
             <Input
               id="name-register"
@@ -168,13 +166,23 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
               placeholder="John Doe"
               value={registerName}
               onChange={(e) => setRegisterName(e.target.value)}
-              disabled={registerMutation.isPending}
               required
-              aria-describedby="register-error"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="email-register">Email</Label>
+            <Label htmlFor="mobile-register">Mobile</Label>
+            <PhoneInput
+              country={'in'}
+              value={registerMobile}
+              onChange={(value) => setRegisterMobile(value)}
+              inputProps={{ name: 'mobile', required: true }}
+              disabled={registerMutation.isPending}
+              inputClass="!w-full !py-5 !text-base !rounded-md !border-gray-200"
+              buttonClass="!border-gray-200"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="email-register">Email (optional)</Label>
             <Input
               id="email-register"
               type="email"
@@ -182,8 +190,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
               value={registerEmail}
               onChange={(e) => setRegisterEmail(e.target.value)}
               disabled={registerMutation.isPending}
-              required
-              aria-describedby="register-error"
             />
           </div>
           <div className="grid gap-2">
@@ -196,10 +202,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
               onChange={(e) => setRegisterPassword(e.target.value)}
               disabled={registerMutation.isPending}
               required
-              aria-describedby="register-error"
             />
           </div>
-          {registerError && <p id="register-error" className="sr-only">{registerError}</p>}
           <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
             {registerMutation.isPending ? 'Registering...' : 'Register'}
           </Button>
@@ -210,14 +214,14 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-secondary/50 px-4">
-        <Tabs className="w-full max-w-sm">
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger onClick={() => { setActiveTab('login'); setRegisterError(null); }} active={activeTab === 'login'}>Login</TabsTrigger>
-                <TabsTrigger onClick={() => { setActiveTab('register'); setLoginError(null); }} active={activeTab === 'register'}>Register</TabsTrigger>
-            </TabsList>
-            {activeTab === 'login' && <TabsContent>{loginForm}</TabsContent>}
-            {activeTab === 'register' && <TabsContent>{registerForm}</TabsContent>}
-        </Tabs>
+      <Tabs className="w-full max-w-sm">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger onClick={() => setActiveTab('login')} active={activeTab === 'login'}>Login</TabsTrigger>
+          <TabsTrigger onClick={() => setActiveTab('register')} active={activeTab === 'register'}>Register</TabsTrigger>
+        </TabsList>
+        {activeTab === 'login' && <TabsContent>{loginForm}</TabsContent>}
+        {activeTab === 'register' && <TabsContent>{registerForm}</TabsContent>}
+      </Tabs>
     </div>
   );
 };
