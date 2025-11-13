@@ -105,7 +105,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
             <div className="bg-red-100 border border-red-300 text-red-600 text-sm rounded-md p-3">{loginError}</div>
           )}
           <div className="grid gap-2">
-            <Label htmlFor="mobile-login">Mobile</Label>
+            <Label htmlFor="mobile-login">Mobile <span className="text-red-500">*</span></Label>
             <PhoneInput
               country={'in'}
               value={loginMobile}
@@ -117,7 +117,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="password-login">Password</Label>
+            <Label htmlFor="password-login">Password <span className="text-red-500">*</span></Label>
             <Input
               id="password-login"
               type="password"
@@ -159,7 +159,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
             <div className="bg-red-100 border border-red-300 text-red-600 text-sm rounded-md p-3">{registerError}</div>
           )}
           <div className="grid gap-2">
-            <Label htmlFor="name-register">Name</Label>
+            <Label htmlFor="name-register">Name <span className="text-red-500">*</span></Label>
             <Input
               id="name-register"
               type="text"
@@ -170,7 +170,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="mobile-register">Mobile</Label>
+            <Label htmlFor="mobile-register">Mobile <span className="text-red-500">*</span></Label>
             <PhoneInput
               country={'in'}
               value={registerMobile}
@@ -193,7 +193,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="password-register">Password</Label>
+            <Label htmlFor="password-register">Password <span className="text-red-500">*</span></Label>
             <Input
               id="password-register"
               type="password"
