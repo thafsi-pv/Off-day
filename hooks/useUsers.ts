@@ -57,3 +57,14 @@ type UpdateUserData = {
       },
     });
   };
+
+  export const useDeleteUserMutation = (options?: any) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+      mutationFn: (variables: { userId: string }) => api.deleteUserById(variables.userId),
+      ...options,
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['users', 'all'] });
+      },
+    });
+  };

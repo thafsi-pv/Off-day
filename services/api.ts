@@ -34,7 +34,8 @@ export const resetUserPassword = (userId: string, newPassword?: string): Promise
   apiClient.post(`/users/${userId}/reset-password`, { newPassword }).then(res => res.data);
 export const updateUser = (id: string, data: { name?: string; mobile?: string; email?: string; status?: string }) =>
   apiClient.patch(`/users/${id}`, data).then((res) => res.data);
-
+export const deleteUserById = (id: string): Promise<{ success: boolean; message: string }> =>
+  apiClient.delete(`/users/${id}`).then((res) => res.data);
 
 // Config
 export const getConfig = (): Promise<Config> => apiClient.get('/config').then(res => res.data);
