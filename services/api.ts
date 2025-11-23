@@ -44,8 +44,8 @@ export const updateConfig = (config: Partial<Config>): Promise<Config> => apiCli
 // Leaves
 export const getAllLeaves = (): Promise<Leave[]> => apiClient.get('/leaves').then(res => res.data);
 export const getLeavesForUser = (userId: string): Promise<Leave[]> => apiClient.get(`/leaves/user/${userId}`).then(res => res.data);
-export const createLeave = (data: { userId: string, date: string, shiftId: string }): Promise<Leave> => apiClient.post('/leaves', data).then(res => res.data);
-export const updateLeaveStatus = (leaveId: string, status: LeaveStatus.APPROVED | LeaveStatus.REJECTED): Promise<Leave> => apiClient.patch(`/leaves/${leaveId}/status`, { status }).then(res => res.data);
+export const createLeave = (data: { userId: string, date: string, shiftId: string, status?: LeaveStatus, creatorId?: string }): Promise<Leave> => apiClient.post('/leaves', data).then(res => res.data);
+export const updateLeaveStatus = (leaveId: string, status: LeaveStatus.APPROVED | LeaveStatus.REJECTED, reason?: string): Promise<Leave> => apiClient.patch(`/leaves/${leaveId}/status`, { status, reason }).then(res => res.data);
 export const updateMultipleLeaveStatuses = (leaveIds: string[], status: LeaveStatus.APPROVED | LeaveStatus.REJECTED): Promise<Leave[]> =>
   apiClient.patch(`/leaves/status/bulk`, { leaveIds, status }).then(res => res.data);
 export const cancelLeave = (leaveId: string): Promise<Leave> => apiClient.delete(`/leaves/${leaveId}`).then(res => res.data);

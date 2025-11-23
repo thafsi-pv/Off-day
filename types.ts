@@ -37,10 +37,13 @@ export interface Leave {
   id: string;
   userId: string;
   userName: string;
+  userMobile?: string;
+  creatorId?: string;
   date: string; // YYYY-MM-DD
   shiftId: string;
   shiftName: string;
   status: LeaveStatus;
+  reason?: string;
   createdAt: string;
 }
 

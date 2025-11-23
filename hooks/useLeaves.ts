@@ -5,21 +5,21 @@ import { Leave, LeaveStatus, LeaveSlotInfo } from '../types';
 
 // Fetch all leaves (for admin)
 export const useAllLeaves = () => {
-  // FIX: Added generic type to useQuery to ensure data is typed correctly.
-  return useQuery<Leave[]>({
-    queryKey: ['leaves', 'all'],
-    queryFn: api.getAllLeaves,
-  });
+    // FIX: Added generic type to useQuery to ensure data is typed correctly.
+    return useQuery<Leave[]>({
+        queryKey: ['leaves', 'all'],
+        queryFn: api.getAllLeaves,
+    });
 };
 
 // Fetch leaves for a specific user
 export const useUserLeaves = (userId: string) => {
-  // FIX: Added generic type to useQuery to ensure data is typed correctly.
-  return useQuery<Leave[]>({
-    queryKey: ['leaves', 'user', userId],
-    queryFn: () => api.getLeavesForUser(userId),
-    enabled: !!userId,
-  });
+    // FIX: Added generic type to useQuery to ensure data is typed correctly.
+    return useQuery<Leave[]>({
+        queryKey: ['leaves', 'user', userId],
+        queryFn: () => api.getLeavesForUser(userId),
+        enabled: !!userId,
+    });
 };
 
 // Fetch slot info for a single date
@@ -50,7 +50,7 @@ export const useSlotInfoForDateRange = (
 export const useCreateLeaveMutation = (options?: any) => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: { userId: string, date: string, shiftId: string }) => api.createLeave(data),
+        mutationFn: (data: { userId: string, date: string, shiftId: string, status?: LeaveStatus, creatorId?: string }) => api.createLeave(data),
         onSuccess: (data: Leave) => {
             queryClient.invalidateQueries({ queryKey: ['leaves', 'user', data.userId] });
             queryClient.invalidateQueries({ queryKey: ['slots'] });
@@ -63,8 +63,8 @@ export const useCreateLeaveMutation = (options?: any) => {
 export const useUpdateLeaveStatusMutation = (options?: any) => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (variables: { leaveId: string, status: LeaveStatus.APPROVED | LeaveStatus.REJECTED }) => 
-            api.updateLeaveStatus(variables.leaveId, variables.status),
+        mutationFn: (variables: { leaveId: string, status: LeaveStatus.APPROVED | LeaveStatus.REJECTED, reason?: string }) =>
+            api.updateLeaveStatus(variables.leaveId, variables.status, variables.reason),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['leaves', 'all'] });
             queryClient.invalidateQueries({ queryKey: ['slots'] });

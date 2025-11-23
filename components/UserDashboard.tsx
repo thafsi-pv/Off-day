@@ -30,14 +30,21 @@ const formatDate = (dateString: string) => {
 };
 
 const LeaveItem: React.FC<{ leave: Leave; isNextActive?: boolean }> = ({ leave, isNextActive }) => (
-    <div className={`flex items-center justify-between p-4 border-b border-border last:border-b-0 transition-colors ${isNextActive ? 'bg-blue-50 dark:bg-blue-900/50 border-l-4 border-blue-500 pl-3' : ''}`}>
-        <div>
-            <p className="font-semibold">{formatDate(leave.date)}</p>
-            <p className="text-sm text-muted-foreground">{leave.shiftName}</p>
+    <div className={`flex flex-col p-4 border-b border-border last:border-b-0 transition-colors ${isNextActive ? 'bg-blue-50 dark:bg-blue-900/50 border-l-4 border-blue-500 pl-3' : ''}`}>
+        <div className="flex items-center justify-between w-full">
+            <div>
+                <p className="font-semibold">{formatDate(leave.date)}</p>
+                <p className="text-sm text-muted-foreground">{leave.shiftName}</p>
+            </div>
+            <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${getStatusBadge(leave.status)}`}>
+                {leave.status}
+            </span>
         </div>
-        <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${getStatusBadge(leave.status)}`}>
-            {leave.status}
-        </span>
+        {leave.status === LeaveStatus.REJECTED && leave.reason && (
+            <div className="w-full mt-2 text-xs text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+                Reason: {leave.reason}
+            </div>
+        )}
     </div>
 );
 
@@ -49,8 +56,8 @@ const getDayAriaLabel = (date: Date, isSelected: boolean, isDisabled: boolean, d
     if (isSelected) {
         label = `Selected, ${label}`;
     }
-    
-    if(leaveStatus) {
+
+    if (leaveStatus) {
         label += `, Leave status: ${leaveStatus}`;
     }
 
@@ -76,7 +83,7 @@ const CalendarView: React.FC<{
         const now = new Date();
         return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
     });
-    
+
     const [focusedDate, setFocusedDate] = useState(() => {
         if (selectedDate) {
             const [year, month, day] = selectedDate.split('-').map(Number);
@@ -87,13 +94,26 @@ const CalendarView: React.FC<{
     });
     const gridRef = useRef<HTMLDivElement>(null);
 
+    // const getStartOfWeekUTC = useCallback((date: Date): string => {
+    //     const d = new Date(date.getTime());
+    //     const day = d.getUTCDay(); // 0 = Sunday
+    //     const diff = d.getUTCDate() - day;
+    //     const startOfWeek = new Date(d.setUTCDate(diff));
+    //     return startOfWeek.toISOString().split('T')[0];
+    // }, []);
     const getStartOfWeekUTC = useCallback((date: Date): string => {
         const d = new Date(date.getTime());
-        const day = d.getUTCDay(); // 0 = Sunday
-        const diff = d.getUTCDate() - day;
+        const day = d.getUTCDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+
+        // Convert to Monday-start week index
+        const mondayIndex = (day + 6) % 7; // Monday=0, Sunday=6
+
+        const diff = d.getUTCDate() - mondayIndex;
         const startOfWeek = new Date(d.setUTCDate(diff));
-        return startOfWeek.toISOString().split('T')[0];
+
+        return startOfWeek.toISOString().split("T")[0];
     }, []);
+
 
     const bookedWeeks = useMemo(() => {
         const weekSet = new Set<string>();
@@ -107,7 +127,7 @@ const CalendarView: React.FC<{
         return weekSet;
     }, [myLeaves, getStartOfWeekUTC]);
 
-     const leavesByDate = useMemo(() => {
+    const leavesByDate = useMemo(() => {
         const map = new Map<string, Leave>();
         myLeaves.forEach(leave => map.set(leave.date, leave));
         return map;
@@ -134,7 +154,7 @@ const CalendarView: React.FC<{
         const newViewDate = new Date(viewDate.getTime());
         newViewDate.setUTCMonth(newViewDate.getUTCMonth() + offset, 1);
         setViewDate(newViewDate);
-        
+
         // Set focused date to first day of new month
         const newFocusedDate = new Date(Date.UTC(newViewDate.getUTCFullYear(), newViewDate.getUTCMonth(), 1));
         setFocusedDate(newFocusedDate);
@@ -159,12 +179,12 @@ const CalendarView: React.FC<{
             case 'End': newFocusedDate.setUTCDate(newFocusedDate.getUTCDate() + (6 - newFocusedDate.getUTCDay())); break;
             case 'Enter':
             case ' ':
-                 const dateString = focusedDate.toISOString().split('T')[0];
-                 const button = gridRef.current?.querySelector(`[data-date="${dateString}"]`) as HTMLButtonElement;
-                 if (button && !button.disabled) {
-                     onDateSelect(dateString);
-                 }
-                 break;
+                const dateString = focusedDate.toISOString().split('T')[0];
+                const button = gridRef.current?.querySelector(`[data-date="${dateString}"]`) as HTMLButtonElement;
+                if (button && !button.disabled) {
+                    onDateSelect(dateString);
+                }
+                break;
             default: preventDefault = false; break;
         }
 
@@ -177,7 +197,7 @@ const CalendarView: React.FC<{
             setFocusedDate(newFocusedDate);
         }
     };
-    
+
     const renderCalendar = () => {
         const year = viewDate.getUTCFullYear();
         const month = viewDate.getUTCMonth();
@@ -188,7 +208,7 @@ const CalendarView: React.FC<{
         const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
         const minDate = new Date(today.getTime());
-        minDate.setDate(minDate.getDate() + 4); 
+        minDate.setDate(minDate.getDate() + 4);
 
         const maxDate = new Date(today.getTime());
         const dayOfWeek = today.getUTCDay();
@@ -216,7 +236,7 @@ const CalendarView: React.FC<{
             const dateString = currentDate.toISOString().split('T')[0];
             const isSelected = selectedDate === dateString;
             const isFocused = focusedDate.getTime() === currentDate.getTime();
-            
+
             const isPast = currentDate < minDate;
             const isFutureDisabled = currentDate > maxDate;
             const isDayDisabledByConfig = config.disabledDays.includes(currentDate.getUTCDay());
@@ -228,19 +248,19 @@ const CalendarView: React.FC<{
             const isDisabled = isPast || isFutureDisabled || isDayDisabledByConfig || (daySlotInfo && !hasSlots) || isWeekBooked || (leaveOnDate && leaveOnDate.status !== LeaveStatus.REJECTED);
 
             const slotTextClass = !daySlotInfo ? 'text-gray-400' : hasSlots ? 'text-green-600' : 'text-red-600';
-            
+
             let dayClass = '';
             if (leaveOnDate) {
-                switch(leaveOnDate.status) {
+                switch (leaveOnDate.status) {
                     case LeaveStatus.APPROVED: dayClass = 'bg-green-200 dark:bg-green-900/50 border-2 border-green-400'; break;
                     case LeaveStatus.PENDING: dayClass = 'bg-yellow-200 dark:bg-yellow-900/50 border-2 border-yellow-400'; break;
                     case LeaveStatus.REJECTED: dayClass = 'bg-red-200 dark:bg-red-900/50 line-through'; break;
                 }
             }
-             if (isSelected) {
+            if (isSelected) {
                 dayClass = 'bg-primary text-primary-foreground';
             } else if (!leaveOnDate) {
-                 dayClass = 'hover:bg-accent';
+                dayClass = 'hover:bg-accent';
             }
 
 
@@ -262,7 +282,7 @@ const CalendarView: React.FC<{
                                 {daySlotInfo.availableSlots}/{daySlotInfo.totalSlots} slots
                             </div>
                         )}
-                         {!isDisabled && !daySlotInfo && (
+                        {!isDisabled && !daySlotInfo && (
                             <div className="text-xs text-muted-foreground h-4" aria-hidden="true"></div>
                         )}
                     </button>
@@ -272,7 +292,7 @@ const CalendarView: React.FC<{
 
         const rows = [];
         let i = 0;
-        while(i < dayCells.length) {
+        while (i < dayCells.length) {
             rows.push(
                 <div key={`row-${i / 7}`} role="row" className="grid grid-cols-7 gap-1">
                     {dayCells.slice(i, i + 7)}
@@ -310,7 +330,7 @@ const CalendarView: React.FC<{
 };
 
 const Skeleton = ({ className }: { className?: string }) => (
-  <div className={`animate-pulse rounded-md bg-muted ${className}`} />
+    <div className={`animate-pulse rounded-md bg-muted ${className}`} />
 );
 
 const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: 'success' | 'error' | 'info') => void }> = ({ user, showToast }) => {
@@ -319,7 +339,7 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
 
     const { data: config, isLoading: isConfigLoading, isError: isConfigError } = useConfig();
     const { data: myLeaves, isLoading: areLeavesLoading, isError: isLeavesError } = useUserLeaves(user.id);
-    
+
     const { dateRange } = useMemo(() => {
         if (!config) return { dateRange: null };
         const getMinDate = () => {
@@ -343,12 +363,12 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
 
     const { data: slotRangeInfo, isLoading: areSlotsLoading } = useSlotInfoForDateRange(dateRange, { enabled: !!dateRange });
     const { data: slotInfoForDate, isLoading: isSlotInfoForDateLoading } = useSlotInfoForDate(selectedDate, { enabled: !!selectedDate });
-    
+
     const createLeaveMutation = useCreateLeaveMutation();
 
-    const sortedLeaves = useMemo(() => 
+    const sortedLeaves = useMemo(() =>
         myLeaves ? [...myLeaves].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) : [],
-    [myLeaves]);
+        [myLeaves]);
 
     const nextActiveLeave = useMemo(() => {
         if (!sortedLeaves) return null;
@@ -361,7 +381,7 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
                 return (leave.status === LeaveStatus.APPROVED || leave.status === LeaveStatus.PENDING) && leaveDate >= now;
             })
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        
+
         return upcomingLeaves.length > 0 ? upcomingLeaves[0] : null;
     }, [sortedLeaves]);
 
@@ -377,15 +397,15 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
             toast.error('Please select a date and a shift.');
             return;
         }
-        
+
         const shiftSlots = slotInfoForDate?.find(s => s.shiftId === selectedShift);
         if (!shiftSlots || shiftSlots.availableSlots <= 0) {
             toast.error('No available slots for the selected shift.');
             return;
         }
-        
+
         toast.promise(
-            createLeaveMutation.mutateAsync({ userId: user.id, date: selectedDate, shiftId: selectedShift }),
+            createLeaveMutation.mutateAsync({ userId: user.id, date: selectedDate, shiftId: selectedShift, creatorId: user.id }),
             {
                 loading: 'Submitting request...',
                 success: () => {
@@ -395,24 +415,24 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
                 },
                 error: (error: any) => error.response?.data?.message || 'Failed to submit leave request.',
             }
-        ).catch(() => {});
+        ).catch(() => { });
     };
 
     if (isConfigLoading || areLeavesLoading || areSlotsLoading) {
         return (
             <div className="container mx-auto p-4 md:p-8 grid gap-8 grid-cols-1 lg:grid-cols-3">
-                 <div className="lg:col-span-1">
-                     <Card>
+                <div className="lg:col-span-1">
+                    <Card>
                         <CardHeader><Skeleton className="h-8 w-3/4" /></CardHeader>
                         <CardContent className="space-y-4">
-                           <Skeleton className="h-8 w-full" />
-                           <div className="grid grid-cols-7 gap-2">
+                            <Skeleton className="h-8 w-full" />
+                            <div className="grid grid-cols-7 gap-2">
                                 {Array.from({ length: 35 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-                           </div>
+                            </div>
                         </CardContent>
-                     </Card>
-                 </div>
-                 <div className="lg:col-span-2 space-y-8">
+                    </Card>
+                </div>
+                <div className="lg:col-span-2 space-y-8">
                     <Card>
                         <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
                         <CardContent className="space-y-4">
@@ -424,20 +444,20 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
                     <Card>
                         <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
                         <CardContent className="p-0">
-                           <div className="space-y-2 p-4">
-                               <Skeleton className="h-12 w-full" />
-                               <Skeleton className="h-12 w-full" />
-                               <Skeleton className="h-12 w-full" />
-                           </div>
+                            <div className="space-y-2 p-4">
+                                <Skeleton className="h-12 w-full" />
+                                <Skeleton className="h-12 w-full" />
+                                <Skeleton className="h-12 w-full" />
+                            </div>
                         </CardContent>
                     </Card>
-                 </div>
+                </div>
             </div>
         );
     }
-    
+
     if (isConfigError || isLeavesError || !config || !myLeaves || !slotRangeInfo) {
-         return <div className="flex justify-center items-center h-screen text-red-500">Failed to load dashboard data. Please try again later.</div>;
+        return <div className="flex justify-center items-center h-screen text-red-500">Failed to load dashboard data. Please try again later.</div>;
     }
 
     return (
@@ -449,9 +469,9 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
                         <CardDescription>Select an available date to request a leave.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <CalendarView 
-                            config={config} 
-                            onDateSelect={handleDateSelect} 
+                        <CalendarView
+                            config={config}
+                            onDateSelect={handleDateSelect}
                             selectedDate={selectedDate}
                             slotInfo={slotRangeInfo}
                             myLeaves={myLeaves}
@@ -461,7 +481,7 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
                                 <h3 className="text-lg font-semibold">Selected Date: {formatDate(selectedDate)}</h3>
                                 <div className="space-y-2">
                                     <h4 className="text-sm font-medium">Available Slots</h4>
-                                    {isSlotInfoForDateLoading && <div className="space-y-2"><Skeleton className="h-8 w-full"/><Skeleton className="h-8 w-full"/></div>}
+                                    {isSlotInfoForDateLoading && <div className="space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>}
                                     {slotInfoForDate && slotInfoForDate.length > 0 ? (
                                         config.shifts.map(shift => {
                                             const info = slotInfoForDate.find(s => s.shiftId === shift.id);
@@ -485,13 +505,13 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
                                     >
                                         <option value="">Select a shift</option>
                                         {config.shifts.map(shift => {
-                                             const info = slotInfoForDate?.find(s => s.shiftId === shift.id);
-                                             const disabled = !info || info.availableSlots <= 0;
-                                             return (
+                                            const info = slotInfoForDate?.find(s => s.shiftId === shift.id);
+                                            const disabled = !info || info.availableSlots <= 0;
+                                            return (
                                                 <option key={shift.id} value={shift.id} disabled={disabled}>
                                                     {shift.name} {disabled ? '(No slots)' : ''}
                                                 </option>
-                                             );
+                                            );
                                         })}
                                     </Select>
                                 </div>
@@ -520,7 +540,11 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
                             {nextActiveLeave.status === LeaveStatus.APPROVED && (
                                 <div className="flex items-center gap-3 rounded-lg border border-green-300 bg-green-50 p-4 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300">
                                     <CheckCircleIcon className="h-5 w-5" />
-                                    <p className="text-sm font-medium">Your leave request is approved!</p>
+                                    <p className="text-sm font-medium">
+                                        {nextActiveLeave.creatorId && nextActiveLeave.creatorId !== user.id
+                                            ? "Your next assigned leave is confirmed."
+                                            : "Your leave request is approved!"}
+                                    </p>
                                 </div>
                             )}
                             <div>
@@ -542,7 +566,7 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
                     <CardContent className="p-0">
                         {sortedLeaves.length > 0 ? (
                             <div className="max-h-[60vh] overflow-y-auto">
-                               {sortedLeaves.map(leave => <LeaveItem key={leave.id} leave={leave} isNextActive={leave.id === nextActiveLeave?.id} />)}
+                                {sortedLeaves.map(leave => <LeaveItem key={leave.id} leave={leave} isNextActive={leave.id === nextActiveLeave?.id} />)}
                             </div>
                         ) : (
                             <div className="p-6 text-center text-muted-foreground">
