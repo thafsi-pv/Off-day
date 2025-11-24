@@ -1548,6 +1548,7 @@ import {
   useDeleteUserMutation,
 } from "../hooks/useUsers";
 import PhoneInput from "react-phone-input-2";
+import { formatDate } from "../utils/date";
 
 const getStatusBadge = (status: LeaveStatus) => {
   switch (status) {
@@ -1561,9 +1562,7 @@ const getStatusBadge = (status: LeaveStatus) => {
   }
 };
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString("en-CA", { timeZone: "UTC" });
-};
+
 
 const Skeleton = ({ className }: { className?: string }) => (
   <div className={`animate-pulse rounded-md bg-muted ${className}`} />

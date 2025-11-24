@@ -5,6 +5,7 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Labe
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon, AlertCircleIcon } from './icons';
 import { useConfig } from '../hooks/useConfig';
 import { useCreateLeaveMutation, useUserLeaves, useSlotInfoForDate, useSlotInfoForDateRange } from '../hooks/useLeaves';
+import { formatDate, formatDateExtended } from '../utils/date';
 
 const getStatusBadge = (status: LeaveStatus) => {
     switch (status) {
@@ -18,22 +19,13 @@ const getStatusBadge = (status: LeaveStatus) => {
     }
 };
 
-const formatDate = (dateString: string) => {
-    const [year, month, day] = dateString.split('-').map(Number);
-    const date = new Date(Date.UTC(year, month - 1, day));
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        timeZone: 'UTC',
-    });
-};
+
 
 const LeaveItem: React.FC<{ leave: Leave; isNextActive?: boolean }> = ({ leave, isNextActive }) => (
     <div className={`flex flex-col p-4 border-b border-border last:border-b-0 transition-colors ${isNextActive ? 'bg-blue-50 dark:bg-blue-900/50 border-l-4 border-blue-500 pl-3' : ''}`}>
         <div className="flex items-center justify-between w-full">
             <div>
-                <p className="font-semibold">{formatDate(leave.date)}</p>
+                <p className="font-semibold">{formatDateExtended(leave.date)}</p>
                 <p className="text-sm text-muted-foreground">{leave.shiftName}</p>
             </div>
             <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${getStatusBadge(leave.status)}`}>
@@ -478,7 +470,7 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
                         />
                         {selectedDate && (
                             <form onSubmit={handleApplyLeave} className="space-y-4 pt-4 border-t mt-4">
-                                <h3 className="text-lg font-semibold">Selected Date: {formatDate(selectedDate)}</h3>
+                                <h3 className="text-lg font-semibold">Selected Date: {formatDateExtended(selectedDate)}</h3>
                                 <div className="space-y-2">
                                     <h4 className="text-sm font-medium">Available Slots</h4>
                                     {isSlotInfoForDateLoading && <div className="space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>}
@@ -549,7 +541,7 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
                             )}
                             <div>
                                 <p className="text-sm text-muted-foreground">Date</p>
-                                <p className="font-semibold">{formatDate(nextActiveLeave.date)}</p>
+                                <p className="font-semibold">{formatDateExtended(nextActiveLeave.date)}</p>
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Shift</p>
