@@ -2,6 +2,7 @@
 export enum Role {
   USER = 'USER',
   ADMIN = 'ADMIN',
+  SHIFT_MANAGER = 'SHIFT_MANAGER',
 }
 
 export enum LeaveStatus {
@@ -31,6 +32,8 @@ export interface Shift {
   id: string;
   name: string;
   slots: number;
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface Leave {

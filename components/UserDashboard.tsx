@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
-import { User, Config, Leave, LeaveSlotInfo, Shift, LeaveStatus } from '../types';
+import { User, Config, Leave, LeaveStatus } from '../types';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Label, Select } from './ui';
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon, AlertCircleIcon } from './icons';
 import { useConfig } from '../hooks/useConfig';
-import { useCreateLeaveMutation, useUserLeaves, useSlotInfoForDate, useSlotInfoForDateRange } from '../hooks/useLeaves';
-import { formatDate, formatDateExtended } from '../utils/date';
+import { useCreateLeaveMutation, useUserLeaves, useSlotInfoForDate, useSlotInfoForDateRange, useUserShift } from '../hooks/useLeaves';
+import { formatDateExtended } from '../utils/date';
 
 const getStatusBadge = (status: LeaveStatus) => {
+    // ... (rest of the file remains same, just fixing imports)
     switch (status) {
         case LeaveStatus.APPROVED:
             return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
@@ -265,7 +266,7 @@ const CalendarView: React.FC<{
                         data-date={dateString}
                         aria-selected={isSelected}
                         aria-disabled={isDisabled}
-                        aria-label={getDayAriaLabel(currentDate, isSelected, isDisabled, daySlotInfo, leaveOnDate?.status)}
+                        aria-label={getDayAriaLabel(currentDate, isSelected, !!isDisabled, daySlotInfo, leaveOnDate?.status)}
                         className={`w-full text-center p-2 rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-ring ${dayClass} ${isPast || isFutureDisabled || isDayDisabledByConfig ? 'text-muted-foreground' : ''}`}
                     >
                         <div className="font-semibold" aria-hidden="true">{day}</div>
@@ -355,6 +356,15 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
 
     const { data: slotRangeInfo, isLoading: areSlotsLoading } = useSlotInfoForDateRange(dateRange, { enabled: !!dateRange });
     const { data: slotInfoForDate, isLoading: isSlotInfoForDateLoading } = useSlotInfoForDate(selectedDate, { enabled: !!selectedDate });
+    const { data: assignedShift } = useUserShift(user.id, selectedDate, { enabled: !!selectedDate });
+
+    useEffect(() => {
+        if (assignedShift) {
+            setSelectedShift(assignedShift.id);
+        } else {
+            setSelectedShift('');
+        }
+    }, [assignedShift]);
 
     const createLeaveMutation = useCreateLeaveMutation();
 
@@ -471,6 +481,29 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
                         {selectedDate && (
                             <form onSubmit={handleApplyLeave} className="space-y-4 pt-4 border-t mt-4">
                                 <h3 className="text-lg font-semibold">Selected Date: {formatDateExtended(selectedDate)}</h3>
+
+                                {/* Display Assigned Shift */}
+                                {assignedShift && (
+                                    <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                                        <div className="flex items-center gap-2">
+                                            <CheckCircleIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                            <div>
+                                                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                                                    Assigned Shift for this week
+                                                </p>
+                                                <p className="text-base font-semibold text-blue-700 dark:text-blue-300">
+                                                    {assignedShift.name}
+                                                    {assignedShift.startTime && assignedShift.endTime && (
+                                                        <span className="text-sm font-normal ml-2">
+                                                            ({assignedShift.startTime} - {assignedShift.endTime})
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="space-y-2">
                                     <h4 className="text-sm font-medium">Available Slots</h4>
                                     {isSlotInfoForDateLoading && <div className="space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>}
@@ -493,7 +526,7 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
                                         value={selectedShift}
                                         onChange={e => setSelectedShift(e.target.value)}
                                         required
-                                        disabled={!slotInfoForDate || slotInfoForDate.every(s => s.availableSlots <= 0) || isSlotInfoForDateLoading}
+                                        disabled={!slotInfoForDate || slotInfoForDate.every(s => s.availableSlots <= 0) || isSlotInfoForDateLoading || !!assignedShift}
                                     >
                                         <option value="">Select a shift</option>
                                         {config.shifts.map(shift => {

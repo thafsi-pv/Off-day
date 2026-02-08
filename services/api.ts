@@ -53,3 +53,44 @@ export const cancelLeave = (leaveId: string): Promise<Leave> => apiClient.delete
 // Slots
 export const getSlotInfoForDate = (date: string): Promise<LeaveSlotInfo[]> => apiClient.get(`/leaves/slots/date/${date}`).then(res => res.data);
 export const getSlotInfoForDateRange = (startDate: string, endDate: string): Promise<{ [date: string]: { availableSlots: number; totalSlots: number; } }> => apiClient.get(`/leaves/slots/range?startDate=${startDate}&endDate=${endDate}`).then(res => res.data);
+
+// User Shifts
+export const assignUserShift = async (data: { userId: string; shiftId: string; startDate: string }) => {
+  const response = await apiClient.post('/user-shifts', data);
+  return response.data;
+};
+
+export const bulkAssignUserShifts = async (data: { userIds: string[]; shiftId: string; startDate: string }) => {
+  const response = await apiClient.post('/user-shifts/bulk', data);
+  return response.data;
+};
+
+export const getUserShift = async (userId: string, date: string) => {
+  const response = await apiClient.get(`/user-shifts/check?userId=${userId}&date=${date}`);
+  return response.data;
+};
+
+export const getShiftsForWeek = async (date: string) => {
+  const response = await apiClient.get(`/user-shifts/week?date=${date}`);
+  return response.data;
+};
+
+export const removeUserShift = async (userId: string, date: string) => {
+  const response = await apiClient.delete(`/user-shifts?userId=${userId}&date=${date}`);
+  return response.data;
+};
+
+export const copyPreviousWeek = async (date: string) => {
+  const response = await apiClient.post('/user-shifts/copy-previous-week', { date });
+  return response.data;
+};
+
+export const updateUserShift = async (data: { userId: string; shiftId: string; startDate: string }) => {
+  const response = await apiClient.post('/user-shifts', data);
+  return response.data;
+};
+
+export const swapUserShifts = async (data: { user1Id: string; user2Id: string; startDate: string }) => {
+  const response = await apiClient.post('/user-shifts/swap', data);
+  return response.data;
+};

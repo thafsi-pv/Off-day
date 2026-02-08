@@ -100,3 +100,13 @@ export const useCancelLeaveMutation = (options?: any) => {
         ...options
     });
 };
+
+// Check for assigned shift
+export const useUserShift = (userId: string, date: string, options?: any) => {
+    return useQuery<any>({
+        queryKey: ['user-shift', userId, date],
+        queryFn: () => api.getUserShift(userId, date),
+        enabled: !!userId && !!date,
+        ...options
+    });
+};
