@@ -433,19 +433,19 @@ const LeaveManagement: React.FC<{
     <Card>
       <CardHeader>
         <CardTitle>Manage Leave Requests</CardTitle>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <CardDescription>Approve or reject leave requests.</CardDescription>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
             <Input
               placeholder="Search by name or mobile..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64"
+              className="w-full sm:w-64"
             />
             <Select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value as any)}
-              className="w-48">
+              className="w-full sm:w-48">
               <option value="ALL">All Statuses</option>
               <option value={LeaveStatus.PENDING}>Pending</option>
               <option value={LeaveStatus.APPROVED}>Approved</option>
@@ -738,8 +738,8 @@ const Reports: React.FC<{ leaves: Leave[] }> = ({ leaves }) => {
             />
           </div>
         </div>
-        <div className="border rounded-lg max-h-[60vh] overflow-y-auto">
-          <table className="w-full text-sm text-left">
+        <div className="border rounded-lg max-h-[60vh] overflow-auto">
+          <table className="w-full min-w-[600px] text-sm text-left">
             <thead className="bg-muted/50 sticky top-0">
               <tr>
                 <th className="p-4 font-medium">User</th>
@@ -1545,7 +1545,7 @@ const AdminDashboard: React.FC<{
     <div className="container mx-auto p-4 md:p-8">
       <Tabs className="w-full">
         <div className="overflow-x-auto scrollbar-hide -mx-4 md:mx-0 px-4 md:px-0">
-          <TabsList className={`grid w-full ${isShiftManager ? 'grid-cols-1' : 'min-w-max md:grid-cols-7'} ${!isShiftManager ? 'gap-1' : ''}`}>
+          <TabsList className={`flex flex-row w-max md:w-full md:grid ${isShiftManager ? 'grid-cols-1' : 'md:grid-cols-7'} ${!isShiftManager ? 'gap-1' : ''} scrollbar-hide`}>
             {isAdmin && (
               <>
                 <TabsTrigger
