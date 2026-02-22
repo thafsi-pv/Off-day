@@ -10,9 +10,9 @@ import { Button } from './components/ui';
 import { IoIosLogOut } from 'react-icons/io';
 
 const ThemeToggle: React.FC<{ theme: string; toggleTheme: () => void }> = ({ theme, toggleTheme }) => (
-    <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
-        {theme === 'light' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
-    </Button>
+  <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+    {theme === 'light' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+  </Button>
 );
 
 const App: React.FC = () => {
@@ -58,16 +58,16 @@ const App: React.FC = () => {
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     switch (type) {
-        case 'success':
-            toast.success(message);
-            break;
-        case 'error':
-            toast.error(message);
-            break;
-        case 'info':
-        default:
-            toast(message);
-            break;
+      case 'success':
+        toast.success(message);
+        break;
+      case 'error':
+        toast.error(message);
+        break;
+      case 'info':
+      default:
+        toast(message);
+        break;
     }
   };
 
@@ -89,56 +89,58 @@ const App: React.FC = () => {
     if (!currentUser) {
       return <Auth onLogin={handleLogin} showToast={showToast} />;
     }
-    
+
     let dashboardContent;
-    if (currentUser.role === Role.ADMIN) {
-        dashboardContent = <AdminDashboard user={currentUser} showToast={showToast} />;
+    const hasExtraPermissions = currentUser.allowedTabs && currentUser.allowedTabs.length > 0;
+
+    if (currentUser.role === Role.ADMIN || hasExtraPermissions) {
+      dashboardContent = <AdminDashboard user={currentUser} showToast={showToast} />;
     } else {
-        // User role routing
-        if (route === '#/history') {
-            dashboardContent = <LeaveHistory user={currentUser} />;
-        } else {
-            dashboardContent = <UserDashboard user={currentUser} showToast={showToast} />;
-        }
+      // User role routing
+      if (route === '#/history') {
+        dashboardContent = <LeaveHistory user={currentUser} />;
+      } else {
+        dashboardContent = <UserDashboard user={currentUser} showToast={showToast} />;
+      }
     }
-      
+
     return (
-        <div className="min-h-screen w-full bg-secondary/50">
-            <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <div className="container h-14 flex items-center justify-between px-4">
-                    <div className="flex items-center gap-2">
-                        <span className="font-bold text-lg">OffDay</span>
-                        <span className="text-sm bg-primary/10 text-primary px-2 py-0.5 rounded-full">{currentUser.name}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <span className="hidden sm:inline">Welcome, {currentUser.name}</span>
-                        <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
-                        <Button variant="link" size="sm" onClick={handleLogout}><IoIosLogOut className="h-5 w-5" /></Button>
-                    </div>
-                </div>
-            </header>
-            <main>{dashboardContent}</main>
-        </div>
+      <div className="min-h-screen w-full bg-secondary/50">
+        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container h-14 flex items-center justify-between px-4">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-lg">OffDay</span>
+              <span className="text-sm bg-primary/10 text-primary px-2 py-0.5 rounded-full">{currentUser.name}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="hidden sm:inline">Welcome, {currentUser.name}</span>
+              <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+              <Button variant="link" size="sm" onClick={handleLogout}><IoIosLogOut className="h-5 w-5" /></Button>
+            </div>
+          </div>
+        </header>
+        <main>{dashboardContent}</main>
+      </div>
     );
   };
 
   return (
-      <>
-        <Toaster
-            position="top-right"
-            toastOptions={{
-                className: '',
-                position: 'top-center',
-                style: {
-                    borderRadius: '0.5rem',
-                    background: 'hsl(var(--card))',
-                    color: 'hsl(var(--card-foreground))',
-                    border: '1px solid hsl(var(--border))',
-                },
-            }}
-        />
-        {renderContent()}
-      </>
+    <>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          className: '',
+          position: 'top-center',
+          style: {
+            borderRadius: '0.5rem',
+            background: 'hsl(var(--card))',
+            color: 'hsl(var(--card-foreground))',
+            border: '1px solid hsl(var(--border))',
+          },
+        }}
+      />
+      {renderContent()}
+    </>
   );
 };
 

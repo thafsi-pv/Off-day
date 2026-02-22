@@ -54,7 +54,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
           return message;
         },
       }
-    ).catch(() => {});
+    ).catch(() => { });
   };
 
   // --- REGISTER ---
@@ -90,7 +90,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
           return message;
         },
       }
-    ).catch(() => {});
+    ).catch(() => { });
   };
 
   // --- FORMS ---
@@ -108,6 +108,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
             <Label htmlFor="mobile-login">Mobile <span className="text-red-500">*</span></Label>
             <PhoneInput
               country={'in'}
+              onlyCountries={['in']}
               value={loginMobile}
               onChange={(value) => setLoginMobile(value)}
               inputProps={{ name: 'mobile', required: true }}
@@ -173,6 +174,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
             <Label htmlFor="mobile-register">Mobile <span className="text-red-500">*</span></Label>
             <PhoneInput
               country={'in'}
+              onlyCountries={['in']}
               value={registerMobile}
               onChange={(value) => setRegisterMobile(value)}
               inputProps={{ name: 'mobile', required: true }}

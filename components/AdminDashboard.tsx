@@ -36,6 +36,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Checkbox,
 } from "./ui";
 import {
   BarChartIcon,
@@ -46,7 +47,9 @@ import {
   KeyIcon,
   ChevronsUpDownIcon,
   CheckIcon,
+  HomeIcon,
 } from "./icons";
+import UserDashboard from "./UserDashboard";
 import {
   useAllLeaves,
   useUpdateLeaveStatusMutation,
@@ -1406,17 +1409,153 @@ const UserManagement: React.FC = () => {
 };
 
 
+const PermissionManagement: React.FC<{
+  users: User[];
+  onUpdatePermissions: (userId: string, allowedTabs: string[]) => void;
+  isLoading: boolean;
+}> = ({ users, onUpdatePermissions, isLoading }) => {
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedTabs, setSelectedTabs] = useState<string[]>([]);
+  const [openUserCombobox, setOpenUserCombobox] = useState(false);
+
+  // Available tabs to control access to
+  const availableTabs = [
+    { id: "analytics", label: "Analytics" },
+    { id: "management", label: "Leaves Management" },
+    { id: "create", label: "Create Leave" },
+    { id: "users", label: "User Management" },
+    { id: "reports", label: "Reports" },
+    { id: "settings", label: "Settings" },
+    { id: "shifts", label: "Shifts" },
+    { id: "roles", label: "Roles & Permissions" },
+  ];
+
+  const selectedUser = useMemo(() => {
+    return users.find((u) => u.id === selectedUserId);
+  }, [users, selectedUserId]);
+
+  useEffect(() => {
+    if (selectedUser) {
+      setSelectedTabs(selectedUser.allowedTabs || []);
+    } else {
+      setSelectedTabs([]);
+    }
+  }, [selectedUser]);
+
+  const handleToggleTab = (tabId: string) => {
+    setSelectedTabs(prev =>
+      prev.includes(tabId)
+        ? prev.filter(t => t !== tabId)
+        : [...prev, tabId]
+    );
+  };
+
+  const handleSave = () => {
+    if (selectedUserId) {
+      onUpdatePermissions(selectedUserId, selectedTabs);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>User Permission Management</CardTitle>
+        <CardDescription>
+          Select a user and assign access to specific dashboard tabs.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-2">
+          <Label>Select User</Label>
+          <Popover open={openUserCombobox} onOpenChange={setOpenUserCombobox}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={openUserCombobox}
+                className="w-full justify-between">
+                {selectedUser
+                  ? `${selectedUser.name} (${formatMobileNumber(selectedUser.mobile || "") || selectedUser.email})`
+                  : "Search and select user..."}
+                <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Search user..." />
+                <CommandList>
+                  <CommandEmpty>No user found.</CommandEmpty>
+                  <CommandGroup>
+                    {users.map((user) => (
+                      <CommandItem
+                        key={user.id}
+                        value={`${user.name} ${user.mobile} ${user.email} ${user.id}`.toLowerCase()}
+                        onSelect={() => {
+                          setSelectedUserId(user.id);
+                          setOpenUserCombobox(false);
+                        }}>
+                        <CheckIcon
+                          className={`mr-2 h-4 w-4 ${selectedUserId === user.id ? "opacity-100" : "opacity-0"
+                            }`}
+                        />
+                        <div className="flex flex-col">
+                          <span className="font-medium">{user.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {user.role} - {formatMobileNumber(user.mobile || "") || user.email || "N/A"}
+                          </span>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {selectedUser && (
+          <div className="space-y-4">
+            <Label>Allowed Tabs</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-md">
+              {availableTabs.map((tab) => (
+                <div key={tab.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={tab.id}
+                    checked={selectedTabs.includes(tab.id)}
+                    onCheckedChange={() => handleToggleTab(tab.id)}
+                  />
+                  <Label htmlFor={tab.id} className="cursor-pointer">{tab.label}</Label>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <Button onClick={handleSave} disabled={isLoading}>
+                {isLoading ? "Saving..." : "Save Permissions"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+
 const AdminDashboard: React.FC<{
   user: User;
   showToast: (message: string, type: "success" | "error" | "info") => void;
-}> = ({ user }) => {
+}> = ({ user, showToast }) => {
   // Set initial tab based on role
-  const [activeTab, setActiveTab] = useState(
-    user.role === Role.SHIFT_MANAGER ? "shifts" : "management"
-  );
+  const [activeTab, setActiveTab] = useState(() => {
+    const isAdmin = user.role === Role.ADMIN;
+    return isAdmin ? "analytics" : "dashboard";
+  });
 
   const isAdmin = user.role === Role.ADMIN;
-  const isShiftManager = user.role === Role.SHIFT_MANAGER;
+  const hasAccess = (tab: string) => isAdmin || user.allowedTabs?.includes(tab);
+
+
 
   const {
     data: allLeaves,
@@ -1439,6 +1578,7 @@ const AdminDashboard: React.FC<{
     useUpdateMultipleLeaveStatusesMutation();
   const updateConfigMutation = useUpdateConfigMutation();
   const createLeaveMutation = useCreateLeaveMutation();
+  const updateUserMutation = useUpdateUserMutation();
 
   const handleStatusChange = (
     leaveId: string,
@@ -1503,6 +1643,17 @@ const AdminDashboard: React.FC<{
       .catch(() => { });
   };
 
+  const handleUpdatePermissions = (userId: string, allowedTabs: string[]) => {
+    toast
+      .promise(updateUserMutation.mutateAsync({ userId, allowedTabs }), {
+        loading: "Updating user permissions...",
+        success: "User permissions updated successfully!",
+        error: (error: any) =>
+          error.response?.data?.message || "Failed to update user permissions.",
+      })
+      .catch(() => { });
+  };
+
   if (areLeavesLoading || isConfigLoading || areUsersLoading) {
     return (
       <div className="container mx-auto p-4 md:p-8">
@@ -1545,54 +1696,84 @@ const AdminDashboard: React.FC<{
     <div className="container mx-auto p-4 md:p-8">
       <Tabs className="w-full">
         <div className="overflow-x-auto scrollbar-hide -mx-4 md:mx-0 px-4 md:px-0">
-          <TabsList className={`flex flex-row w-max md:w-full md:grid ${isShiftManager ? 'grid-cols-1' : 'md:grid-cols-7'} ${!isShiftManager ? 'gap-1' : ''} scrollbar-hide`}>
-            {isAdmin && (
-              <>
-                <TabsTrigger
-                  onClick={() => setActiveTab("analytics")}
-                  active={activeTab === "analytics"}>
-                  <BarChartIcon className="w-4 h-4 mr-2" /> Analytics
-                </TabsTrigger>
-                <TabsTrigger
-                  onClick={() => setActiveTab("management")}
-                  active={activeTab === "management"}>
-                  <ListIcon className="w-4 h-4 mr-2" /> Leaves
-                </TabsTrigger>
-                <TabsTrigger
-                  onClick={() => setActiveTab("create")}
-                  active={activeTab === "create"}>
-                  <ListIcon className="w-4 h-4 mr-2" /> Create
-                </TabsTrigger>
-                <TabsTrigger
-                  onClick={() => setActiveTab("users")}
-                  active={activeTab === "users"}>
-                  <UsersIcon className="w-4 h-4 mr-2" /> Users
-                </TabsTrigger>
-                <TabsTrigger
-                  onClick={() => setActiveTab("reports")}
-                  active={activeTab === "reports"}>
-                  <DownloadIcon className="w-4 h-4 mr-2" /> Reports
-                </TabsTrigger>
-                <TabsTrigger
-                  onClick={() => setActiveTab("settings")}
-                  active={activeTab === "settings"}>
-                  <SettingsIcon className="w-4 h-4 mr-2" /> Settings
-                </TabsTrigger>
-              </>
-            )}
+          <TabsList className="flex flex-row w-max md:w-full md:grid md:grid-flow-col md:auto-cols-fr gap-1 scrollbar-hide">
             <TabsTrigger
-              onClick={() => setActiveTab("shifts")}
-              active={activeTab === "shifts"}>
-              <ListIcon className="w-4 h-4 mr-2" /> Shifts
+              onClick={() => setActiveTab("dashboard")}
+              active={activeTab === "dashboard"}
+            >
+              <HomeIcon className="w-4 h-4 mr-2" /> My Dashboard
             </TabsTrigger>
+            {hasAccess("analytics") && (
+              <TabsTrigger
+                onClick={() => setActiveTab("analytics")}
+                active={activeTab === "analytics"}>
+                <BarChartIcon className="w-4 h-4 mr-2" /> Analytics
+              </TabsTrigger>
+            )}
+            {hasAccess("management") && (
+              <TabsTrigger
+                onClick={() => setActiveTab("management")}
+                active={activeTab === "management"}>
+                <ListIcon className="w-4 h-4 mr-2" /> Leaves
+              </TabsTrigger>
+            )}
+            {hasAccess("create") && (
+              <TabsTrigger
+                onClick={() => setActiveTab("create")}
+                active={activeTab === "create"}>
+                <ListIcon className="w-4 h-4 mr-2" /> Create
+              </TabsTrigger>
+            )}
+            {hasAccess("users") && (
+              <TabsTrigger
+                onClick={() => setActiveTab("users")}
+                active={activeTab === "users"}>
+                <UsersIcon className="w-4 h-4 mr-2" /> Users
+              </TabsTrigger>
+            )}
+            {hasAccess("reports") && (
+              <TabsTrigger
+                onClick={() => setActiveTab("reports")}
+                active={activeTab === "reports"}>
+                <DownloadIcon className="w-4 h-4 mr-2" /> Reports
+              </TabsTrigger>
+            )}
+            {hasAccess("settings") && (
+              <TabsTrigger
+                onClick={() => setActiveTab("settings")}
+                active={activeTab === "settings"}>
+                <SettingsIcon className="w-4 h-4 mr-2" /> Settings
+              </TabsTrigger>
+            )}
+            {hasAccess("roles") && (
+              <TabsTrigger
+                onClick={() => setActiveTab("roles")}
+                active={activeTab === "roles"}>
+                <KeyIcon className="w-4 h-4 mr-2" /> Permissions
+              </TabsTrigger>
+            )}
+            {hasAccess("shifts") && (
+              <TabsTrigger
+                onClick={() => setActiveTab("shifts")}
+                active={activeTab === "shifts"}>
+                <ListIcon className="w-4 h-4 mr-2" /> Shifts
+              </TabsTrigger>
+            )}
           </TabsList>
         </div>
-        {isAdmin && activeTab === "analytics" && (
+
+        {activeTab === "dashboard" && (
+          <TabsContent>
+            <UserDashboard user={user} showToast={showToast} />
+          </TabsContent>
+        )}
+
+        {hasAccess("analytics") && activeTab === "analytics" && (
           <TabsContent>
             <Analytics leaves={allLeaves} shifts={config.shifts} />
           </TabsContent>
         )}
-        {isAdmin && activeTab === "management" && (
+        {hasAccess("management") && activeTab === "management" && (
           <TabsContent>
             <LeaveManagement
               leaves={allLeaves}
@@ -1602,7 +1783,19 @@ const AdminDashboard: React.FC<{
             />
           </TabsContent>
         )}
-        {isAdmin && activeTab === "create" && (
+
+
+        {hasAccess("roles") && activeTab === "roles" && (
+          <TabsContent>
+            <PermissionManagement
+              users={users}
+              onUpdatePermissions={handleUpdatePermissions}
+              isLoading={updateUserMutation.isPending}
+            />
+          </TabsContent>
+        )}
+
+        {hasAccess("create") && activeTab === "create" && (
           <TabsContent>
             <CreateLeave
               users={users}
@@ -1612,17 +1805,17 @@ const AdminDashboard: React.FC<{
             />
           </TabsContent>
         )}
-        {isAdmin && activeTab === "users" && (
+        {hasAccess("users") && activeTab === "users" && (
           <TabsContent>
             <UserManagement />
           </TabsContent>
         )}
-        {isAdmin && activeTab === "reports" && (
+        {hasAccess("reports") && activeTab === "reports" && (
           <TabsContent>
             <Reports leaves={allLeaves} />
           </TabsContent>
         )}
-        {isAdmin && activeTab === "settings" && (
+        {hasAccess("settings") && activeTab === "settings" && (
           <TabsContent>
             <Settings
               config={config}
@@ -1631,13 +1824,13 @@ const AdminDashboard: React.FC<{
             />
           </TabsContent>
         )}
-        {activeTab === "shifts" && (
+        {hasAccess("shifts") && activeTab === "shifts" && (
           <TabsContent>
             <ShiftManagement users={users || []} shifts={config.shifts} />
           </TabsContent>
         )}
       </Tabs>
-    </div>
+    </div >
   );
 };
 

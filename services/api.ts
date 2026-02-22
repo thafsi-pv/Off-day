@@ -1,6 +1,6 @@
 
 import axios from 'axios';
-import { User, Config, Leave, LeaveStatus, LeaveSlotInfo, UserStatus } from '../types';
+import { User, Config, Leave, LeaveStatus, LeaveSlotInfo, UserStatus, Role } from '../types';
 
 // Get API URL from environment variable, fallback to default for development
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -32,7 +32,7 @@ export const getAllUsers = (): Promise<User[]> => apiClient.get('/users').then(r
 export const updateUserStatus = (userId: string, status: UserStatus): Promise<User> => apiClient.patch(`/users/${userId}/status`, { status }).then(res => res.data);
 export const resetUserPassword = (userId: string, newPassword?: string): Promise<{ success: boolean; newPassword?: string; message: string }> =>
   apiClient.post(`/users/${userId}/reset-password`, { newPassword }).then(res => res.data);
-export const updateUser = (id: string, data: { name?: string; mobile?: string; email?: string; status?: string }) =>
+export const updateUser = (id: string, data: { name?: string; mobile?: string; email?: string; status?: string; role?: Role; allowedTabs?: string[] }) =>
   apiClient.patch(`/users/${id}`, data).then((res) => res.data);
 export const deleteUserById = (id: string): Promise<{ success: boolean; message: string }> =>
   apiClient.delete(`/users/${id}`).then((res) => res.data);

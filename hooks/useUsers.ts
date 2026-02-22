@@ -1,7 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
 import * as api from '../services/api';
-import { User, UserStatus } from '../types';
+import { User, UserStatus, Role } from '../types';
 
 // FIX: The useAllUsers hook was called with arguments in AdminDashboard.tsx, but it was defined to take none.
 // This updates it to accept react-query options to support conditional fetching.
@@ -43,6 +43,8 @@ type UpdateUserData = {
   mobile?: string;
   email?: string;
   status?: string;
+  role?: Role;
+  allowedTabs?: string[];
 };
 
 type UseUpdateUserMutationOptions = Omit<UseMutationOptions<User, any, UpdateUserData>, 'mutationFn'>;

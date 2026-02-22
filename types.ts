@@ -26,6 +26,7 @@ export interface User {
   email?: string;
   role: Role;
   status: UserStatus;
+  allowedTabs: string[];
 }
 
 export interface Shift {

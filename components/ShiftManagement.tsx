@@ -68,14 +68,18 @@ export const ShiftManagement: React.FC<ShiftManagementProps> = ({ users, shifts 
     });
 
     const removeUserMutation = useMutation({
-        mutationFn: ({ userId, date }: { userId: string; date: string }) =>
+        mutationFn: ({ userId, date, skipToast }: { userId: string; date: string; skipToast?: boolean }) =>
             removeUserShift(userId, date),
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ["week-shifts"] });
-            toast.success("User removed successfully");
+            if (!variables.skipToast) {
+                toast.success("User removed successfully");
+            }
         },
-        onError: (error: any) => {
-            toast.error(error.response?.data?.message || "Failed to remove user");
+        onError: (error: any, variables) => {
+            if (!variables.skipToast) {
+                toast.error(error.response?.data?.message || "Failed to remove user");
+            }
         },
     });
 
@@ -93,9 +97,11 @@ export const ShiftManagement: React.FC<ShiftManagementProps> = ({ users, shifts 
         const assignments: { [shiftId: string]: User[] } = {};
 
         shifts.forEach(shift => {
-            assignments[shift.id] = weekShifts
+            const shiftUsers = weekShifts
                 .filter((ws: any) => ws.shiftId === shift.id)
                 .map((ws: any) => ws.user);
+
+            assignments[shift.id] = shiftUsers.sort((a: User, b: User) => a.name.localeCompare(b.name));
         });
 
         return assignments;
@@ -108,17 +114,20 @@ export const ShiftManagement: React.FC<ShiftManagementProps> = ({ users, shifts 
 
     // Get available users (not assigned to any shift this week)
     const availableUsers = useMemo(() => {
-        return users.filter((user) => !assignedUserIds.has(user.id));
+        return users
+            .filter((user) => !assignedUserIds.has(user.id))
+            .sort((a, b) => a.name.localeCompare(b.name));
     }, [users, assignedUserIds]);
 
     const handleCopyPreviousWeek = () => {
         copyPreviousWeekMutation.mutate(format(weekStart, "yyyy-MM-dd"));
     };
 
-    const handleRemoveUser = (userId: string) => {
-        removeUserMutation.mutate({
+    const handleRemoveUser = (userId: string, skipToast = false) => {
+        return removeUserMutation.mutateAsync({
             userId,
             date: format(weekStart, "yyyy-MM-dd"),
+            skipToast
         });
     };
 
@@ -285,7 +294,7 @@ interface ShiftRowProps {
     allShifts: Shift[];
     weekShifts: any[];
     onAddUsers: (userIds: string[]) => void;
-    onRemoveUser: (userId: string) => void;
+    onRemoveUser: (userId: string, skipToast?: boolean) => Promise<any>;
     onChangeShift: (userId: string, newShiftId: string, skipConfirm?: boolean) => void;
     isLoading: boolean;
 }
@@ -305,8 +314,10 @@ const ShiftRow: React.FC<ShiftRowProps> = ({
     const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
     const [bulkShiftId, setBulkShiftId] = useState("");
     const [showBulkModal, setShowBulkModal] = useState(false);
-    const [bulkChangeMode, setBulkChangeMode] = useState<"swap" | "add">("swap");
+    const [bulkChangeMode, setBulkChangeMode] = useState<"swap" | "add">("add");
     const [isExpanded, setIsExpanded] = useState(false);
+    const [selectedActionUsers, setSelectedActionUsers] = useState<string[]>([]);
+    const [searchQuery, setSearchQuery] = useState("");
 
     const COLLAPSE_THRESHOLD = 5;
     const visibleUsers = isExpanded ? assignedUsers : assignedUsers.slice(0, COLLAPSE_THRESHOLD);
@@ -328,42 +339,61 @@ const ShiftRow: React.FC<ShiftRowProps> = ({
     };
 
     const handleBulkShiftChangeClick = () => {
-        if (!bulkShiftId || assignedUsers.length === 0) return;
-        setBulkChangeMode("swap"); // Default to swap
+        if (assignedUsers.length === 0) return;
+        setBulkShiftId("");
+        setBulkChangeMode("add");
+        setSelectedActionUsers([]);
         setShowBulkModal(true);
     };
 
-    const handleConfirmBulkChange = async () => {
+    const toggleActionUser = (userId: string) => {
+        setSelectedActionUsers(prev =>
+            prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+        );
+    };
+
+    const getTargetUsers = () => {
+        if (!bulkShiftId) return [];
+        return weekShifts
+            .filter((ws: any) => ws.shiftId === bulkShiftId)
+            .map((ws: any) => ws.userId);
+    };
+
+    const handleConfirmBulkChange = async (type: "move_selected" | "move_all" | "swap_selected" | "swap_all") => {
+        if (!bulkShiftId) return;
+
         const targetShift = allShifts.find(s => s.id === bulkShiftId);
         if (!targetShift) return;
 
-        try {
-            if (bulkChangeMode === "swap") {
-                // TRUE SWAP: Exchange all users between the two shifts
-                // 1. Get users currently in the target shift
-                const targetShiftUsers = weekShifts
-                    .filter((ws: any) => ws.shiftId === bulkShiftId)
-                    .map((ws: any) => ws.user);
+        const usersToProcess = (type === "move_selected" || type === "swap_selected")
+            ? assignedUsers.filter(u => selectedActionUsers.includes(u.id))
+            : assignedUsers;
 
-                // 2. Move source shift users to target shift
-                await Promise.all(assignedUsers.map(user =>
+        if (usersToProcess.length === 0) return;
+
+        try {
+            if (type === "swap_selected" || type === "swap_all") {
+                const targetShiftUsers = getTargetUsers();
+
+                // Move source shift users to target shift
+                await Promise.all(usersToProcess.map(user =>
                     onChangeShift(user.id, bulkShiftId, true)
                 ));
 
-                // 3. Move target shift users to source shift (completing the swap)
+                // Move target shift users to source shift (completing the swap)
                 if (targetShiftUsers.length > 0) {
                     await Promise.all(targetShiftUsers.map((user: any) =>
                         onChangeShift(user.id, shift.id, true)
                     ));
                 }
 
-                toast.success(`Swapped ${assignedUsers.length} user(s) with ${targetShiftUsers.length} user(s)`);
+                toast.success(`Swapped ${usersToProcess.length} user(s) with ${targetShiftUsers.length} user(s)`);
             } else {
-                // ADD TO LIST: Just move users to target shift (no swap)
-                await Promise.all(assignedUsers.map(user =>
+                // ADD TO LIST
+                await Promise.all(usersToProcess.map(user =>
                     onChangeShift(user.id, bulkShiftId, true)
                 ));
-                toast.success(`${assignedUsers.length} user(s) moved successfully`);
+                toast.success(`${usersToProcess.length} user(s) moved successfully`);
             }
         } catch (error) {
             // Error toast is already handled by mutation
@@ -371,6 +401,51 @@ const ShiftRow: React.FC<ShiftRowProps> = ({
 
         setShowBulkModal(false);
         setBulkShiftId("");
+        setSelectedActionUsers([]);
+    };
+
+    const handleRemoveSelected = async () => {
+        if (selectedActionUsers.length === 0) return;
+
+        const removePromise = Promise.all(
+            selectedActionUsers.map(userId => onRemoveUser(userId, true))
+        );
+
+        toast.promise(removePromise, {
+            loading: "Removing selected users...",
+            success: `Successfully removed ${selectedActionUsers.length} user(s)`,
+            error: "Failed to remove some users",
+        });
+
+        try {
+            await removePromise;
+            setShowBulkModal(false);
+            setBulkShiftId("");
+            setSelectedActionUsers([]);
+        } catch (error) {
+            // Error logged/toasted by promise
+        }
+    };
+
+    const handleRemoveAll = async () => {
+        if (assignedUsers.length === 0) return;
+        if (!window.confirm(`Are you sure you want to completely remove all ${assignedUsers.length} users from this shift?`)) return;
+
+        const removeAllPromise = Promise.all(
+            assignedUsers.map(user => onRemoveUser(user.id, true))
+        );
+
+        toast.promise(removeAllPromise, {
+            loading: "Removing all users...",
+            success: `Successfully removed all ${assignedUsers.length} users`,
+            error: "Failed to remove all users",
+        });
+
+        try {
+            await removeAllPromise;
+        } catch (error) {
+            // Error logged/toasted by promise
+        }
     };
 
     return (
@@ -390,35 +465,29 @@ const ShiftRow: React.FC<ShiftRowProps> = ({
                             {assignedUsers.length}
                         </Badge>
                     </div>
-                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
                         <Badge variant="secondary" className="hidden sm:inline-flex shrink-0">
                             {assignedUsers.length} {assignedUsers.length === 1 ? 'user' : 'users'}
                         </Badge>
                         {assignedUsers.length > 0 && (
-                            <div className="flex items-center gap-2 flex-1 sm:flex-none min-w-0">
-                                <Select
-                                    value={bulkShiftId}
-                                    onChange={(e) => setBulkShiftId(e.target.value)}
-                                    disabled={isLoading}
-                                    className="text-xs h-10 w-full sm:w-[140px]"
-                                >
-                                    <option value="">Change all...</option>
-                                    {allShifts
-                                        .filter(s => s.id !== shift.id)
-                                        .map((s) => (
-                                            <option key={s.id} value={s.id}>
-                                                {s.name}
-                                            </option>
-                                        ))}
-                                </Select>
+                            <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                                 <Button
                                     size="sm"
                                     variant="outline"
                                     onClick={handleBulkShiftChangeClick}
-                                    disabled={!bulkShiftId || isLoading}
-                                    className="h-10 text-xs px-3 shrink-0"
+                                    disabled={isLoading}
+                                    className="h-9 text-xs px-3 flex-1 sm:flex-none"
                                 >
-                                    Apply
+                                    Manage Users
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={handleRemoveAll}
+                                    disabled={isLoading}
+                                    className="h-9 text-xs px-3 flex-1 sm:flex-none"
+                                >
+                                    Remove All
                                 </Button>
                             </div>
                         )}
@@ -518,57 +587,156 @@ const ShiftRow: React.FC<ShiftRowProps> = ({
 
             {/* Bulk Change Modal */}
             <Dialog open={showBulkModal} onOpenChange={setShowBulkModal}>
-                <DialogContent>
+                <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Change All Users</DialogTitle>
+                        <DialogTitle>Manage Shift Users</DialogTitle>
                         <DialogDescription>
-                            Move all {assignedUsers.length} users from <strong>{shift.name}</strong> to{" "}
-                            <strong>{allShifts.find(s => s.id === bulkShiftId)?.name}</strong>
+                            Select users and a target shift to move or swap.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-3">
-                            <label className="flex items-center gap-3 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="bulkMode"
-                                    value="swap"
-                                    checked={bulkChangeMode === "swap"}
-                                    onChange={() => setBulkChangeMode("swap")}
-                                    className="h-4 w-4"
-                                />
-                                <div>
-                                    <div className="font-medium">Swap</div>
-                                    <div className="text-sm text-muted-foreground">
-                                        Exchange users between the two shifts
-                                    </div>
+
+                    {/* Mode Selection Buttons at Top */}
+                    <div className="flex gap-2">
+                        <Button
+                            variant={bulkChangeMode === "add" ? "default" : "outline"}
+                            className="flex-1"
+                            onClick={() => setBulkChangeMode("add")}
+                        >
+                            Move Users
+                        </Button>
+                        <Button
+                            variant={bulkChangeMode === "swap" ? "default" : "outline"}
+                            className="flex-1"
+                            onClick={() => setBulkChangeMode("swap")}
+                        >
+                            Swap Users
+                        </Button>
+                    </div>
+
+                    <div className="space-y-4 py-2">
+                        {/* Target Shift Selector */}
+                        <div className="space-y-2">
+                            <Label>Target Shift</Label>
+                            <Select
+                                value={bulkShiftId}
+                                onChange={(e) => setBulkShiftId(e.target.value)}
+                                disabled={isLoading}
+                                className="w-full h-10"
+                            >
+                                <option value="">Select a shift...</option>
+                                {allShifts
+                                    .filter(s => s.id !== shift.id)
+                                    .map((s) => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.name}
+                                        </option>
+                                    ))}
+                            </Select>
+                        </div>
+
+                        {/* User List in Alphabetical Order */}
+                        <div className="space-y-2">
+                            <Label>Select Users</Label>
+                            {assignedUsers.length > 0 && (
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Search users..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 pr-8 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    />
+                                    {searchQuery && (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setSearchQuery("")}
+                                            className="absolute right-0 top-0 h-9 w-9 text-muted-foreground hover:text-foreground"
+                                        >
+                                            <FaTimes className="h-3 w-3" />
+                                        </Button>
+                                    )}
                                 </div>
-                            </label>
-                            <label className="flex items-center gap-3 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="bulkMode"
-                                    value="add"
-                                    checked={bulkChangeMode === "add"}
-                                    onChange={() => setBulkChangeMode("add")}
-                                    className="h-4 w-4"
-                                />
-                                <div>
-                                    <div className="font-medium">Add to list</div>
-                                    <div className="text-sm text-muted-foreground">
-                                        Move users to the target shift (no swap)
-                                    </div>
-                                </div>
-                            </label>
+                            )}
+                            <div className="max-h-[200px] overflow-y-auto border rounded-md p-2 space-y-1">
+                                {assignedUsers
+                                    .filter(user => user.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                                    .slice()
+                                    .sort((a, b) => a.name.localeCompare(b.name))
+                                    .map(user => (
+                                        <label key={user.id} className="flex items-center gap-3 p-2 hover:bg-muted/50 rounded cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedActionUsers.includes(user.id)}
+                                                onChange={() => toggleActionUser(user.id)}
+                                                className="h-4 w-4 rounded border-primary"
+                                            />
+                                            <span className="text-sm font-medium">{user.name}</span>
+                                        </label>
+                                    ))}
+                                {assignedUsers.length === 0 && (
+                                    <div className="p-2 text-sm text-muted-foreground italic">No users assigned to this shift.</div>
+                                )}
+                                {assignedUsers.length > 0 && assignedUsers.filter(user => user.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                                    <div className="p-2 text-sm text-muted-foreground italic">No users found matching "{searchQuery}".</div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowBulkModal(false)}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleConfirmBulkChange}>
-                            Confirm
-                        </Button>
+
+                    <DialogFooter className="flex flex-col gap-2 mt-4 sm:flex-row sm:items-center sm:justify-end w-full">
+                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto flex-wrap justify-end">
+                            <Button variant="outline" onClick={() => setShowBulkModal(false)} className="w-full sm:w-auto order-last sm:order-first">
+                                Cancel
+                            </Button>
+                            {selectedActionUsers.length > 0 && (
+                                <Button
+                                    variant="destructive"
+                                    onClick={handleRemoveSelected}
+                                    disabled={isLoading}
+                                    className="w-full sm:w-auto text-xs px-3"
+                                >
+                                    Remove Selected
+                                </Button>
+                            )}
+                            {bulkChangeMode === "add" ? (
+                                <>
+                                    <Button
+                                        onClick={() => handleConfirmBulkChange("move_selected")}
+                                        disabled={!bulkShiftId || selectedActionUsers.length === 0 || isLoading}
+                                        variant="secondary"
+                                        className="w-full sm:w-auto text-xs px-3"
+                                    >
+                                        Move Selected
+                                    </Button>
+                                    <Button
+                                        onClick={() => handleConfirmBulkChange("move_all")}
+                                        disabled={!bulkShiftId || assignedUsers.length === 0 || isLoading}
+                                        className="w-full sm:w-auto text-xs px-3"
+                                    >
+                                        Move All
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button
+                                        onClick={() => handleConfirmBulkChange("swap_selected")}
+                                        disabled={!bulkShiftId || selectedActionUsers.length === 0 || isLoading}
+                                        variant="secondary"
+                                        className="w-full sm:w-auto text-xs px-3"
+                                    >
+                                        Swap Selected
+                                    </Button>
+                                    <Button
+                                        onClick={() => handleConfirmBulkChange("swap_all")}
+                                        disabled={!bulkShiftId || assignedUsers.length === 0 || isLoading}
+                                        className="w-full sm:w-auto text-xs px-3"
+                                    >
+                                        Swap All
+                                    </Button>
+                                </>
+                            )}
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
