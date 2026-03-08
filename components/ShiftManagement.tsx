@@ -68,9 +68,9 @@ export const ShiftManagement: React.FC<ShiftManagementProps> = ({ users, shifts 
     });
 
     const removeUserMutation = useMutation({
-        mutationFn: ({ userId, date, skipToast }: { userId: string; date: string; skipToast?: boolean }) =>
+        mutationFn: ({ userId, date, skipToast: _skipToast }: { userId: string; date: string; skipToast?: boolean }) =>
             removeUserShift(userId, date),
-        onSuccess: (data, variables) => {
+        onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ["week-shifts"] });
             if (!variables.skipToast) {
                 toast.success("User removed successfully");
@@ -246,7 +246,7 @@ export const ShiftManagement: React.FC<ShiftManagementProps> = ({ users, shifts 
 
                 {/* Unassigned Users */}
                 {availableUsers.length > 0 && (
-                    <div className="border-t pt-4">
+                    <div className="border-t pt-4 dark:border-border/50">
                         <Label className="text-muted-foreground">Unassigned Users ({availableUsers.length})</Label>
                         <div className="flex flex-wrap gap-2 mt-2">
                             {availableUsers.map((user) => (
@@ -450,7 +450,7 @@ const ShiftRow: React.FC<ShiftRowProps> = ({
 
     return (
         <>
-            <div className="border rounded-lg p-3 md:p-4 space-y-3">
+            <div className="border rounded-lg p-3 md:p-4 space-y-3 dark:border-border/50">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center justify-between sm:justify-start gap-2 flex-1">
                         <div>
@@ -555,7 +555,7 @@ const ShiftRow: React.FC<ShiftRowProps> = ({
                                                 onSelect={() => toggleUserSelection(user.id)}
                                             >
                                                 <div className={cn(
-                                                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary dark:border-border/50",
                                                     selectedUsers.includes(user.id)
                                                         ? "bg-primary text-primary-foreground"
                                                         : "opacity-50 [&_svg]:invisible"
@@ -644,7 +644,7 @@ const ShiftRow: React.FC<ShiftRowProps> = ({
                                         placeholder="Search users..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 pr-8 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 pr-8 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 dark:border-border/50"
                                     />
                                     {searchQuery && (
                                         <Button
@@ -658,7 +658,7 @@ const ShiftRow: React.FC<ShiftRowProps> = ({
                                     )}
                                 </div>
                             )}
-                            <div className="max-h-[200px] overflow-y-auto border rounded-md p-2 space-y-1">
+                            <div className="max-h-[200px] overflow-y-auto border rounded-md p-2 space-y-1 dark:border-border/50">
                                 {assignedUsers
                                     .filter(user => user.name.toLowerCase().includes(searchQuery.toLowerCase()))
                                     .slice()
@@ -669,7 +669,7 @@ const ShiftRow: React.FC<ShiftRowProps> = ({
                                                 type="checkbox"
                                                 checked={selectedActionUsers.includes(user.id)}
                                                 onChange={() => toggleActionUser(user.id)}
-                                                className="h-4 w-4 rounded border-primary"
+                                                className="h-4 w-4 rounded border-primary dark:border-border/50"
                                             />
                                             <span className="text-sm font-medium">{user.name}</span>
                                         </label>

@@ -459,7 +459,7 @@ const LeaveManagement: React.FC<{
       </CardHeader>
       <CardContent>
         {selectedLeaves.length > 0 && (
-          <div className="p-4 bg-muted border-b rounded-t-lg flex items-center gap-4">
+          <div className="p-4 bg-muted border-b rounded-t-lg flex items-center gap-4 dark:border-border/50">
             <p className="text-sm font-semibold flex-grow">
               {selectedLeaves.length} selected
             </p>
@@ -479,10 +479,10 @@ const LeaveManagement: React.FC<{
           </div>
         )}
         <div
-          className={`border rounded-lg max-h-[60vh] overflow-y-auto ${selectedLeaves.length > 0 ? "rounded-t-none" : ""
+          className={`border rounded-lg max-h-[60vh] overflow-y-auto dark:border-border/50 ${selectedLeaves.length > 0 ? "rounded-t-none" : ""
             }`}>
           {selectableLeaves.length > 0 && (
-            <div className="flex items-center p-4 border-b bg-muted/50 sticky top-0 z-10">
+            <div className="flex items-center p-4 border-b bg-muted/50 sticky top-0 z-10 dark:border-border/50">
               <input
                 type="checkbox"
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
@@ -502,7 +502,7 @@ const LeaveManagement: React.FC<{
             filteredLeaves.map((leave) => (
               <div
                 key={leave.id}
-                className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border-b last:border-b-0 gap-4">
+                className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border-b last:border-b-0 gap-4 dark:border-border/50">
                 <div className="flex items-center flex-grow">
                   <div className="w-8 flex-shrink-0">
                     {leave.status === LeaveStatus.PENDING && (
@@ -585,7 +585,7 @@ const LeaveManagement: React.FC<{
                   <Label htmlFor="reject-reason">Reason for Rejection</Label>
                   <textarea
                     id="reject-reason"
-                    className="w-full min-h-[100px] px-3 py-2 text-sm rounded-md border border-input bg-background"
+                    className="w-full min-h-[100px] px-3 py-2 text-sm rounded-md border border-input bg-background dark:border-border/50"
                     placeholder="e.g., Insufficient staffing on this date, Prior approved leave conflict, etc."
                     value={rejectReason}
                     onChange={(e) => setRejectReason(e.target.value)}
@@ -693,7 +693,7 @@ const Reports: React.FC<{ leaves: Leave[] }> = ({ leaves }) => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-wrap gap-4 p-4 border rounded-lg mb-4 bg-muted/50">
+        <div className="flex flex-wrap gap-4 p-4 border rounded-lg mb-4 bg-muted/50 dark:border-border/50">
           <div className="grid gap-2">
             <Label htmlFor="start-date">Start Date</Label>
             <Input
@@ -741,7 +741,7 @@ const Reports: React.FC<{ leaves: Leave[] }> = ({ leaves }) => {
             />
           </div>
         </div>
-        <div className="border rounded-lg max-h-[60vh] overflow-auto">
+        <div className="border rounded-lg max-h-[60vh] overflow-auto dark:border-border/50">
           <table className="w-full min-w-[600px] text-sm text-left">
             <thead className="bg-muted/50 sticky top-0">
               <tr>
@@ -755,7 +755,7 @@ const Reports: React.FC<{ leaves: Leave[] }> = ({ leaves }) => {
             <tbody>
               {filteredLeaves.length > 0 ? (
                 filteredLeaves.map((leave) => (
-                  <tr key={leave.id} className="border-b last:border-0">
+                  <tr key={leave.id} className="border-b last:border-0 dark:border-border/50">
                     <td className="p-4">{leave.userName}</td>
                     <td className="p-4">{formatDate(leave.date)}</td>
                     <td className="p-4">
@@ -1021,7 +1021,7 @@ const UserManagement: React.FC = () => {
         (t) => (
           <div
             className={`${t.visible ? "animate-enter" : "animate-leave"
-              } bg-white dark:bg-gray-900 shadow-lg rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col gap-3 max-w-md`}>
+              } bg-white dark:bg-gray-900 shadow-lg rounded-xl p-4 border border-gray-200 dark:border-border/50 flex flex-col gap-3 max-w-md`}>
             <p className="text-gray-800 dark:text-white font-semibold">
               ✅ Password Reset Successful
             </p>
@@ -1200,11 +1200,11 @@ const UserManagement: React.FC = () => {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="border rounded-lg max-h-[70vh] overflow-y-auto">
+        <div className="border rounded-lg max-h-[70vh] overflow-y-auto dark:border-border/50">
           {sortedUsers.map((user) => (
             <div
               key={user.id}
-              className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border-b last:border-b-0 gap-2">
+              className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border-b last:border-b-0 gap-2 dark:border-border/50">
               <div>
                 <p className="font-semibold">
                   {user.name}{" "}
@@ -1306,8 +1306,8 @@ const UserManagement: React.FC = () => {
                     onChange={(value) => handleEditChange("mobile", value)}
                     inputProps={{ name: "mobile", required: true }}
                     disabled={updateUserMutation.isPending}
-                    inputClass="!w-full !py-5 !text-base !rounded-md !border-gray-200"
-                    buttonClass="!border-gray-200"
+                    inputClass="!w-full !py-5 !text-base !rounded-md !border-gray-200 dark:!border-border/50"
+                    buttonClass="!border-gray-200 dark:!border-border/50"
                   />
                 </div>
 
@@ -1516,7 +1516,7 @@ const PermissionManagement: React.FC<{
         {selectedUser && (
           <div className="space-y-4">
             <Label>Allowed Tabs</Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-md">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-md dark:border-border/50">
               {availableTabs.map((tab) => (
                 <div key={tab.id} className="flex items-center space-x-2">
                   <Checkbox
@@ -1542,10 +1542,7 @@ const PermissionManagement: React.FC<{
 };
 
 
-const AdminDashboard: React.FC<{
-  user: User;
-  showToast: (message: string, type: "success" | "error" | "info") => void;
-}> = ({ user, showToast }) => {
+const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
   // Set initial tab based on role
   const [activeTab, setActiveTab] = useState(() => {
     const isAdmin = user.role === Role.ADMIN;
@@ -1662,7 +1659,7 @@ const AdminDashboard: React.FC<{
 
   if (areLeavesLoading || isConfigLoading || areUsersLoading) {
     return (
-      <div className="container mx-auto p-4 md:p-8">
+      <div className="w-full mx-auto p-2 sm:p-8">
         <div className="grid grid-cols-6 gap-1 bg-muted p-1 rounded-md mb-2">
           <Skeleton className="h-8" />
           <Skeleton className="h-8" />
@@ -1699,10 +1696,10 @@ const AdminDashboard: React.FC<{
     createLeaveMutation.isPending;
 
   return (
-    <div className="container mx-auto p-4 md:p-8">
+    <div className="w-full mx-auto p-2 sm:p-8 space-y-4 sm:space-y-8">
       <Tabs className="w-full">
-        <div className="overflow-x-auto scrollbar-hide -mx-4 md:mx-0 px-4 md:px-0">
-          <TabsList className="flex flex-row w-max md:w-full md:grid md:grid-flow-col md:auto-cols-fr gap-1 scrollbar-hide">
+        <div className="overflow-x-auto scrollbar-hide -mx-2 px-2 pb-2">
+          <TabsList className="inline-flex w-max sm:w-full justify-start sm:justify-center gap-1">
             <TabsTrigger
               onClick={() => setActiveTab("dashboard")}
               active={activeTab === "dashboard"}
@@ -1770,7 +1767,7 @@ const AdminDashboard: React.FC<{
 
         {activeTab === "dashboard" && (
           <TabsContent>
-            <UserDashboard user={user} showToast={showToast} />
+            <UserDashboard user={user} />
           </TabsContent>
         )}
 

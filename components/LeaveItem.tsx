@@ -30,7 +30,7 @@ const LeaveItem: React.FC<LeaveItemProps> = ({ leave, onCancel, isNextActive, is
   const isCancellable = leave.status === LeaveStatus.PENDING && onCancel;
 
   return (
-    <div className={`flex items-center justify-between p-4 border-b border-border last:border-b-0 transition-colors ${isNextActive ? 'bg-primary/10' : ''}`}>
+    <div className={`flex items-center justify-between p-4 border-b border-border last:border-b-0 transition-colors dark:border-border/50 ${isNextActive ? 'bg-primary/10' : ''}`}>
       <div>
         <p className="font-semibold">{formatDateExtended(leave.date)}</p>
         <p className="text-sm text-muted-foreground">{leave.shiftName}</p>

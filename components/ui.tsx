@@ -12,7 +12,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const variants = {
       default: 'bg-primary text-primary-foreground hover:bg-primary/90',
       destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-      outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+      outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-border/50',
       secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
       ghost: 'hover:bg-accent hover:text-accent-foreground',
       link: 'text-primary underline-offset-4 hover:underline',
@@ -35,12 +35,12 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 export const Card = ({ className, children }: { className?: string; children: React.ReactNode }) => (
-  <div className={`rounded-lg border bg-card text-card-foreground shadow-sm ${className}`}>
+  <div className={`rounded-lg border bg-card text-card-foreground shadow-sm dark:border-border/50 ${className}`}>
     {children}
   </div>
 );
 export const CardHeader = ({ className, children }: { className?: string; children: React.ReactNode }) => (
-  <div className={`flex flex-col space-y-1.5 p-6 ${className}`}>{children}</div>
+  <div className={`flex flex-col space-y-1.5 p-4 sm:p-6 ${className}`}>{children}</div>
 );
 export const CardTitle = ({ className, children }: { className?: string; children: React.ReactNode }) => (
   <h3 className={`text-2xl font-semibold leading-none tracking-tight ${className}`}>{children}</h3>
@@ -49,10 +49,10 @@ export const CardDescription = ({ className, children }: { className?: string; c
   <p className={`text-sm text-muted-foreground ${className}`}>{children}</p>
 );
 export const CardContent = ({ className, children }: { className?: string; children: React.ReactNode }) => (
-  <div className={`p-6 pt-0 ${className}`}>{children}</div>
+  <div className={`p-4 sm:p-6 pt-0 sm:pt-0 ${className}`}>{children}</div>
 );
 export const CardFooter = ({ className, children }: { className?: string; children: React.ReactNode }) => (
-  <div className={`flex items-center p-6 pt-0 ${className}`}>{children}</div>
+  <div className={`flex items-center p-4 sm:p-6 pt-0 sm:pt-0 ${className}`}>{children}</div>
 );
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
@@ -60,7 +60,7 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
     return (
       <input
         type={type}
-        className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+        className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-border/50 ${className}`}
         ref={ref}
         {...props}
       />
@@ -71,13 +71,15 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
 export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(
   ({ className, children, ...props }, ref) => {
     return (
-      <select
-        className={`flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
-        ref={ref}
-        {...props}
-      >
-        {children}
-      </select>
+      <div className={`relative ${className}`}>
+        <select
+          className={`flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-border/50 ${className}`}
+          ref={ref}
+          {...props}
+        >
+          {children}
+        </select>
+      </div>
     );
   }
 );
@@ -135,7 +137,7 @@ export const PopoverContent = React.forwardRef<
       align={align}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 dark:border-border/50",
         className
       )}
       {...props}
@@ -152,7 +154,7 @@ export const Checkbox = React.forwardRef<
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(
-      "peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
+      "peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:border-border/50",
       className
     )}
     {...props}
@@ -201,7 +203,7 @@ export const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg dark:border-border/50",
         className
       )}
       {...props}
@@ -286,7 +288,7 @@ export const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
-  <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
+  <div className="flex items-center border-b px-3 dark:border-border/50" cmdk-input-wrapper="">
     {/* Search Icon inline */}
     <svg
       className="mr-2 h-4 w-4 shrink-0 opacity-50"
@@ -378,6 +380,6 @@ export const Badge = ({ className, variant = "default", ...props }: React.HTMLAt
     outline: "text-foreground",
   };
   return (
-    <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2", variants[variant], className)} {...props} />
+    <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 dark:border-border/50", variants[variant], className)} {...props} />
   );
 };

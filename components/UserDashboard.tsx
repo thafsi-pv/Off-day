@@ -23,7 +23,7 @@ const getStatusBadge = (status: LeaveStatus) => {
 
 
 const LeaveItem: React.FC<{ leave: Leave; isNextActive?: boolean }> = ({ leave, isNextActive }) => (
-    <div className={`flex flex-col p-4 border-b border-border last:border-b-0 transition-colors ${isNextActive ? 'bg-blue-50 dark:bg-blue-900/50 border-l-4 border-blue-500 pl-3' : ''}`}>
+    <div className={`flex flex-col p-4 border-b border-border last:border-b-0 transition-colors dark:border-border/50 ${isNextActive ? 'bg-blue-50 dark:bg-blue-900/50 border-l-4 border-blue-500 pl-3' : ''}`}>
         <div className="flex items-center justify-between w-full">
             <div>
                 <p className="font-semibold">{formatDateExtended(leave.date)}</p>
@@ -240,7 +240,6 @@ const CalendarView: React.FC<{
             const hasSlots = daySlotInfo && daySlotInfo.availableSlots > 0;
             const isDisabled = isPast || isFutureDisabled || isDayDisabledByConfig || (daySlotInfo && !hasSlots) || isWeekBooked || (leaveOnDate && leaveOnDate.status !== LeaveStatus.REJECTED);
 
-            const slotTextClass = !daySlotInfo ? 'text-gray-400' : hasSlots ? 'text-green-600' : 'text-red-600';
 
             let dayClass = '';
             if (leaveOnDate) {
@@ -267,12 +266,12 @@ const CalendarView: React.FC<{
                         aria-selected={isSelected}
                         aria-disabled={isDisabled}
                         aria-label={getDayAriaLabel(currentDate, isSelected, !!isDisabled, daySlotInfo, leaveOnDate?.status)}
-                        className={`w-full text-center p-2 rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-ring ${dayClass} ${isPast || isFutureDisabled || isDayDisabledByConfig ? 'text-muted-foreground' : ''}`}
+                        className={`w-full text-center p-1 sm:p-2 rounded-lg transition-colors text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-ring ${dayClass} ${isPast || isFutureDisabled || isDayDisabledByConfig ? 'text-muted-foreground' : ''}`}
                     >
                         <div className="font-semibold" aria-hidden="true">{day}</div>
                         {!isDisabled && daySlotInfo && (
-                            <div className={`text-xs ${slotTextClass}`} aria-hidden="true">
-                                {daySlotInfo.availableSlots}/{daySlotInfo.totalSlots} slots
+                            <div className="text-[10px] sm:text-xs truncate scale-90 sm:scale-100 origin-center" aria-hidden="true">
+                                {daySlotInfo.availableSlots}/{daySlotInfo.totalSlots}
                             </div>
                         )}
                         {!isDisabled && !daySlotInfo && (
@@ -326,7 +325,7 @@ const Skeleton = ({ className }: { className?: string }) => (
     <div className={`animate-pulse rounded-md bg-muted ${className}`} />
 );
 
-const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: 'success' | 'error' | 'info') => void }> = ({ user, showToast }) => {
+const UserDashboard: React.FC<{ user: User }> = ({ user }) => {
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedShift, setSelectedShift] = useState('');
 
@@ -422,7 +421,7 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
 
     if (isConfigLoading || areLeavesLoading || areSlotsLoading) {
         return (
-            <div className="container mx-auto p-4 md:p-8 grid gap-8 grid-cols-1 lg:grid-cols-3">
+            <div className="w-full mx-auto p-2 sm:p-8 grid gap-4 sm:gap-8 grid-cols-1 lg:grid-cols-3">
                 <div className="lg:col-span-1">
                     <Card>
                         <CardHeader><Skeleton className="h-8 w-3/4" /></CardHeader>
@@ -463,7 +462,7 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
     }
 
     return (
-        <div className="container mx-auto p-4 md:p-8 grid gap-8 grid-cols-1 lg:grid-cols-3">
+        <div className="w-full mx-auto p-2 sm:p-8 grid gap-4 sm:gap-8 grid-cols-1 lg:grid-cols-3">
             <div className="lg:col-span-1">
                 <Card>
                     <CardHeader>
@@ -479,12 +478,12 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
                             myLeaves={myLeaves}
                         />
                         {selectedDate && (
-                            <form onSubmit={handleApplyLeave} className="space-y-4 pt-4 border-t mt-4">
+                            <form onSubmit={handleApplyLeave} className="space-y-4 pt-4 border-t mt-4 dark:border-border/50">
                                 <h3 className="text-lg font-semibold">Selected Date: {formatDateExtended(selectedDate)}</h3>
 
                                 {/* Display Assigned Shift */}
                                 {assignedShift && (
-                                    <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                                    <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 dark:border-border/50">
                                         <div className="flex items-center gap-2">
                                             <CheckCircleIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                             <div>
@@ -557,13 +556,13 @@ const UserDashboard: React.FC<{ user: User, showToast: (message: string, type: '
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {nextActiveLeave.status === LeaveStatus.PENDING && (
-                                <div className="flex items-center gap-3 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">
+                                <div className="flex items-center gap-3 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-yellow-800 dark:border-yellow-700/50 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-border/50">
                                     <AlertCircleIcon className="h-5 w-5" />
                                     <p className="text-sm font-medium">You have a pending leave request.</p>
                                 </div>
                             )}
                             {nextActiveLeave.status === LeaveStatus.APPROVED && (
-                                <div className="flex items-center gap-3 rounded-lg border border-green-300 bg-green-50 p-4 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300">
+                                <div className="flex items-center gap-3 rounded-lg border border-green-300 bg-green-50 p-4 text-green-800 dark:border-green-700/50 dark:bg-green-900/30 dark:text-green-300 dark:border-border/50">
                                     <CheckCircleIcon className="h-5 w-5" />
                                     <p className="text-sm font-medium">
                                         {nextActiveLeave.creatorId && nextActiveLeave.creatorId !== user.id

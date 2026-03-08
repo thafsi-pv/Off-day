@@ -8,10 +8,9 @@ import { useLoginMutation, useRegisterMutation } from '../hooks/useAuth';
 
 interface AuthProps {
   onLogin: (user: User, rememberMe: boolean) => void;
-  showToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
-const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
+const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
 
   // Login
@@ -102,7 +101,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
       <CardContent>
         <form onSubmit={handleLogin} className="grid gap-4">
           {loginError && (
-            <div className="bg-red-100 border border-red-300 text-red-600 text-sm rounded-md p-3">{loginError}</div>
+            <div className="bg-red-100 border border-red-300 text-red-600 text-sm rounded-md p-3 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-400">{loginError}</div>
           )}
           <div className="grid gap-2">
             <Label htmlFor="mobile-login">Mobile <span className="text-red-500">*</span></Label>
@@ -113,8 +112,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
               onChange={(value) => setLoginMobile(value)}
               inputProps={{ name: 'mobile', required: true }}
               disabled={loginMutation.isPending}
-              inputClass="!w-full !py-5 !text-base !rounded-md !border-gray-200"
-              buttonClass="!border-gray-200"
+              inputClass="!w-full !py-5 !text-base !rounded-md !border-gray-200 dark:!border-border/50"
+              buttonClass="!border-gray-200 dark:!border-border/50"
             />
           </div>
           <div className="grid gap-2">
@@ -134,7 +133,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 shrink-0 rounded border-input text-primary focus:ring-ring"
+              className="h-4 w-4 shrink-0 rounded border-input text-primary focus:ring-ring dark:border-border/50"
             />
             <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer">
               Remember me
@@ -157,7 +156,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
       <CardContent>
         <form onSubmit={handleRegister} className="grid gap-4">
           {registerError && (
-            <div className="bg-red-100 border border-red-300 text-red-600 text-sm rounded-md p-3">{registerError}</div>
+            <div className="bg-red-100 border border-red-300 text-red-600 text-sm rounded-md p-3 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-400">{registerError}</div>
           )}
           <div className="grid gap-2">
             <Label htmlFor="name-register">Name <span className="text-red-500">*</span></Label>
@@ -179,8 +178,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, showToast }) => {
               onChange={(value) => setRegisterMobile(value)}
               inputProps={{ name: 'mobile', required: true }}
               disabled={registerMutation.isPending}
-              inputClass="!w-full !py-5 !text-base !rounded-md !border-gray-200"
-              buttonClass="!border-gray-200"
+              inputClass="!w-full !py-5 !text-base !rounded-md !border-gray-200 dark:!border-border/50"
+              buttonClass="!border-gray-200 dark:!border-border/50"
             />
           </div>
           <div className="grid gap-2">

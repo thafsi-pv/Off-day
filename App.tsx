@@ -56,28 +56,11 @@ const App: React.FC = () => {
     setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
   };
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    switch (type) {
-      case 'success':
-        toast.success(message);
-        break;
-      case 'error':
-        toast.error(message);
-        break;
-      case 'info':
-      default:
-        toast(message);
-        break;
-    }
-  };
 
   const handleLogin = (user: User, _rememberMe: boolean) => {
-    // Always store in state
     setCurrentUser(user);
-    // Always store in localStorage so the API interceptor can use the access_token for the Bearer fallback
     localStorage.setItem('currentUser', JSON.stringify(user));
   };
-
 
   const handleLogout = async () => {
     try {
@@ -91,30 +74,28 @@ const App: React.FC = () => {
     toast('You have been logged out.');
   };
 
-
   const renderContent = () => {
     if (!currentUser) {
-      return <Auth onLogin={handleLogin} showToast={showToast} />;
+      return <Auth onLogin={handleLogin} />;
     }
 
-    let dashboardContent;
     const hasExtraPermissions = currentUser.allowedTabs && currentUser.allowedTabs.length > 0;
 
+    let dashboardContent;
     if (currentUser.role === Role.ADMIN || hasExtraPermissions) {
-      dashboardContent = <AdminDashboard user={currentUser} showToast={showToast} />;
+      dashboardContent = <AdminDashboard user={currentUser} />;
     } else {
-      // User role routing
       if (route === '#/history') {
         dashboardContent = <LeaveHistory user={currentUser} />;
       } else {
-        dashboardContent = <UserDashboard user={currentUser} showToast={showToast} />;
+        dashboardContent = <UserDashboard user={currentUser} />;
       }
     }
 
     return (
       <div className="min-h-screen w-full bg-secondary/50">
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="container h-14 flex items-center justify-between px-4">
+          <div className="w-full px-4 sm:container h-14 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="font-bold text-lg">OffDay</span>
               <span className="text-sm bg-primary/10 text-primary px-2 py-0.5 rounded-full">{currentUser.name}</span>
@@ -122,7 +103,9 @@ const App: React.FC = () => {
             <div className="flex items-center gap-4">
               <span className="hidden sm:inline">Welcome, {currentUser.name}</span>
               <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
-              <Button variant="link" size="sm" onClick={handleLogout}><IoIosLogOut className="h-5 w-5" /></Button>
+              <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
+                <IoIosLogOut className="h-5 w-5" />
+              </Button>
             </div>
           </div>
         </header>
@@ -136,8 +119,6 @@ const App: React.FC = () => {
       <Toaster
         position="top-right"
         toastOptions={{
-          className: '',
-          position: 'top-center',
           style: {
             borderRadius: '0.5rem',
             background: 'hsl(var(--card))',

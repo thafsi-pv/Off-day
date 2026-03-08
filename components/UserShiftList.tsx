@@ -140,7 +140,7 @@ export const UserShiftList: React.FC<UserShiftListProps> = ({ users, shifts }) =
                 </div>
 
                 {/* User List Table */}
-                <div className="border rounded-lg overflow-hidden">
+                <div className="border rounded-lg overflow-hidden dark:border-border/50">
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-muted/50">
