@@ -71,12 +71,13 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogin = (user: User, rememberMe: boolean) => {
+  const handleLogin = (user: User, _rememberMe: boolean) => {
+    // Always store in state
     setCurrentUser(user);
-    if (rememberMe) {
-      localStorage.setItem('currentUser', JSON.stringify(user));
-    }
+    // Always store in localStorage so the API interceptor can use the access_token for the Bearer fallback
+    localStorage.setItem('currentUser', JSON.stringify(user));
   };
+
 
   const handleLogout = async () => {
     try {

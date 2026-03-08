@@ -14,8 +14,21 @@ const apiClient = axios.create({
   withCredentials: true, // Enabled for cookie support
 });
 
-// Request interceptor — no longer needed since we only use cookies
-// apiClient.interceptors.request.use((config) => config);
+// Request interceptor to send Bearer token as fallback for mobile users
+apiClient.interceptors.request.use((config) => {
+  try {
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      const user = JSON.parse(savedUser);
+      if (user.access_token) {
+        config.headers.Authorization = `Bearer ${user.access_token}`;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to parse user for authorization header', error);
+  }
+  return config;
+});
 
 
 // Response interceptor to handle 401 Unauthorized
