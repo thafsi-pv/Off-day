@@ -21,7 +21,10 @@ apiClient.interceptors.request.use((config) => {
     if (savedUser) {
       const user = JSON.parse(savedUser);
       if (user.access_token) {
-        config.headers.Authorization = `Bearer ${user.access_token}`;
+        // Use standard header assignment
+        if (config.headers) {
+          config.headers['Authorization'] = `Bearer ${user.access_token}`;
+        }
       }
     }
   } catch (error) {
@@ -29,6 +32,7 @@ apiClient.interceptors.request.use((config) => {
   }
   return config;
 });
+
 
 
 // Response interceptor to handle 401 Unauthorized
