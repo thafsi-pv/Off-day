@@ -11,8 +11,28 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: false, // Set to true if using cookies for authentication
+  withCredentials: true, // Enabled for cookie support
 });
+
+// Request interceptor — no longer needed since we only use cookies
+// apiClient.interceptors.request.use((config) => config);
+
+
+// Response interceptor to handle 401 Unauthorized
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Clear user data on unauthorized error
+      localStorage.removeItem('currentUser');
+      // Use hash-based routing as seen in App.tsx
+      window.location.hash = '';
+      window.location.reload(); // Force reload to show login screen
+    }
+    return Promise.reject(error);
+  }
+);
+
 
 // Auth
 // export const login = (credentials: { email: string, password: string }): Promise<User> => apiClient.post('/auth/login', credentials).then(res => res.data);
@@ -25,6 +45,8 @@ export const login = (credentials: { mobile: string; password: string }): Promis
 // REGISTER — now includes mobile + optional email
 export const register = (data: { name: string; mobile: string; email?: string | null; password: string }): Promise<User> =>
   apiClient.post('/auth/register', data).then((res) => res.data);
+
+export const logout = (): Promise<void> => apiClient.post('/auth/logout').then(res => res.data);
 
 
 // Users

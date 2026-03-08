@@ -27,6 +27,7 @@ export interface User {
   role: Role;
   status: UserStatus;
   allowedTabs: string[];
+  access_token?: string;
 }
 
 export interface Shift {

@@ -78,12 +78,18 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await import('./services/api').then(api => api.logout());
+    } catch (error) {
+      console.error("Logout API call failed", error);
+    }
     setCurrentUser(null);
     localStorage.removeItem('currentUser');
     window.location.hash = '';
     toast('You have been logged out.');
   };
+
 
   const renderContent = () => {
     if (!currentUser) {

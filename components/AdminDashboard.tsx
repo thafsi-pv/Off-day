@@ -67,7 +67,6 @@ import {
 } from "../hooks/useUsers";
 import PhoneInput from "react-phone-input-2";
 import { formatDate } from "../utils/date";
-import { assignUserShift } from "../services/api";
 import { ShiftManagement } from "./ShiftManagement";
 
 const getStatusBadge = (status: LeaveStatus) => {
@@ -207,8 +206,9 @@ const CreateLeave: React.FC<{
       date: selectedDate,
       shiftId: selectedShiftId,
       status: LeaveStatus.APPROVED,
-      creatorId: "admin", // Using a placeholder since we don't have admin ID easily available in this component, and we just need to know it's NOT the user.
+      creatorId: "admin", // This will be handled in the parent handleCreateLeave
     });
+
 
     // Reset form
     setSelectedUserId("");
@@ -1633,8 +1633,13 @@ const AdminDashboard: React.FC<{
   };
 
   const handleCreateLeave = (data: { userId: string; date: string; shiftId: string; status?: LeaveStatus; creatorId?: string }) => {
+    const finalData = {
+      ...data,
+      creatorId: user.id, // Set the current admin as the creator
+    };
+
     toast
-      .promise(createLeaveMutation.mutateAsync(data), {
+      .promise(createLeaveMutation.mutateAsync(finalData), {
         loading: "Creating leave...",
         success: "Leave created successfully!",
         error: (error: any) =>
@@ -1642,6 +1647,7 @@ const AdminDashboard: React.FC<{
       })
       .catch(() => { });
   };
+
 
   const handleUpdatePermissions = (userId: string, allowedTabs: string[]) => {
     toast
