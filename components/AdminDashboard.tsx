@@ -68,6 +68,7 @@ import {
 import PhoneInput from "react-phone-input-2";
 import { formatDate } from "../utils/date";
 import { ShiftManagement } from "./ShiftManagement";
+import { BOOKING_CONSTANTS } from "../utils/constants";
 
 const getStatusBadge = (status: LeaveStatus) => {
   switch (status) {
@@ -216,7 +217,23 @@ const CreateLeave: React.FC<{
     setSelectedShiftId("");
   };
 
-  const minDate = new Date().toISOString().split("T")[0];
+  const minDate = (() => {
+    const now = new Date();
+    const istNow = new Date(now.getTime() + BOOKING_CONSTANTS.IST_OFFSET_MS);
+
+    const day = istNow.getUTCDay(); // 0=Sunday (in IST)
+    const hour = istNow.getUTCHours(); // (in IST)
+    const minute = istNow.getUTCMinutes(); // (in IST)
+
+    const [resetHour, resetMinute] = BOOKING_CONSTANTS.WEEKLY_RESET_TIME.split(':').map(Number);
+
+    let virtualToday = new Date(istNow);
+    if (day === BOOKING_CONSTANTS.WEEKLY_RESET_DAY && (hour < resetHour || (hour === resetHour && minute < resetMinute))) {
+      // It's Sunday before 15:30 IST, stay on Saturday's schedule
+      virtualToday.setUTCDate(virtualToday.getUTCDate() - 1);
+    }
+    return virtualToday.toISOString().split("T")[0];
+  })();
 
   return (
     <Card>

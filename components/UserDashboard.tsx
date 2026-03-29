@@ -4,7 +4,8 @@ import { User, Config, Leave, LeaveStatus } from '../types';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Label, Select } from './ui';
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon, AlertCircleIcon } from './icons';
 import { useConfig } from '../hooks/useConfig';
-import { useCreateLeaveMutation, useUserLeaves, useSlotInfoForDate, useSlotInfoForDateRange, useUserShift } from '../hooks/useLeaves';
+import { useUserLeaves, useCreateLeaveMutation, useSlotInfoForDate, useSlotInfoForDateRange, useUserShift } from '../hooks/useLeaves';
+import { BOOKING_CONSTANTS } from '../utils/constants';
 import { formatDateExtended } from '../utils/date';
 
 const getStatusBadge = (status: LeaveStatus) => {
@@ -198,10 +199,24 @@ const CalendarView: React.FC<{
         const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
 
         const now = new Date();
-        const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+        const istNow = new Date(now.getTime() + BOOKING_CONSTANTS.IST_OFFSET_MS);
+
+        const day = istNow.getUTCDay(); // 0=Sunday (in IST)
+        const hour = istNow.getUTCHours(); // (in IST)
+        const minute = istNow.getUTCMinutes(); // (in IST)
+
+        const [resetHour, resetMinute] = BOOKING_CONSTANTS.WEEKLY_RESET_TIME.split(':').map(Number);
+
+        let virtualToday = new Date(istNow);
+        if (day === BOOKING_CONSTANTS.WEEKLY_RESET_DAY && (hour < resetHour || (hour === resetHour && minute < resetMinute))) {
+            // It's Sunday before 15:30 IST, stay on Saturday's schedule
+            virtualToday.setUTCDate(virtualToday.getUTCDate() - 1);
+        }
+
+        const today = new Date(Date.UTC(virtualToday.getUTCFullYear(), virtualToday.getUTCMonth(), virtualToday.getUTCDate()));
 
         const minDate = new Date(today.getTime());
-        minDate.setDate(minDate.getDate() + 4);
+        minDate.setUTCDate(minDate.getUTCDate() + BOOKING_CONSTANTS.MIN_NOTICE_DAYS);
 
         const maxDate = new Date(today.getTime());
         const dayOfWeek = today.getUTCDay();
@@ -334,13 +349,27 @@ const UserDashboard: React.FC<{ user: User }> = ({ user }) => {
 
     const { dateRange } = useMemo(() => {
         if (!config) return { dateRange: null };
-        const getMinDate = () => {
+        const getMinMaxDates = (currentConfig: Config) => {
             const now = new Date();
-            return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString().split('T')[0];
-        };
-        const getMaxDate = (currentConfig: Config) => {
-            const now = new Date();
-            const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+            const istNow = new Date(now.getTime() + BOOKING_CONSTANTS.IST_OFFSET_MS);
+
+            const day = istNow.getUTCDay(); // 0=Sunday (in IST)
+            const hour = istNow.getUTCHours(); // (in IST)
+            const minute = istNow.getUTCMinutes(); // (in IST)
+
+            const [resetHour, resetMinute] = BOOKING_CONSTANTS.WEEKLY_RESET_TIME.split(':').map(Number);
+
+            let virtualToday = new Date(istNow);
+            if (day === BOOKING_CONSTANTS.WEEKLY_RESET_DAY && (hour < resetHour || (hour === resetHour && minute < resetMinute))) {
+                // It's Sunday before 15:30 IST, stay on Saturday's schedule
+                virtualToday.setUTCDate(virtualToday.getUTCDate() - 1);
+            }
+
+            const today = new Date(Date.UTC(virtualToday.getUTCFullYear(), virtualToday.getUTCMonth(), virtualToday.getUTCDate()));
+            
+            const minDate = new Date(today.getTime());
+            minDate.setUTCDate(minDate.getUTCDate() + BOOKING_CONSTANTS.MIN_NOTICE_DAYS);
+
             const maxDate = new Date(today.getTime());
             const dayOfWeek = today.getUTCDay();
             switch (currentConfig.weekRange) {
@@ -348,9 +377,13 @@ const UserDashboard: React.FC<{ user: User }> = ({ user }) => {
                 case '2_WEEKS': maxDate.setUTCDate(today.getUTCDate() + (6 - dayOfWeek) + 7); break;
                 case '1_MONTH': maxDate.setUTCDate(today.getUTCDate() + 30); break;
             }
-            return maxDate.toISOString().split('T')[0];
+            return {
+                minDateStr: minDate.toISOString().split('T')[0],
+                maxDateStr: maxDate.toISOString().split('T')[0]
+            };
         };
-        return { dateRange: { startDate: getMinDate(), endDate: getMaxDate(config) } };
+        const { minDateStr, maxDateStr } = getMinMaxDates(config);
+        return { dateRange: { startDate: minDateStr, endDate: maxDateStr } };
     }, [config]);
 
     const { data: slotRangeInfo, isLoading: areSlotsLoading } = useSlotInfoForDateRange(dateRange, { enabled: !!dateRange });

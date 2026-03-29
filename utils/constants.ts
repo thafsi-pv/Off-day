@@ -1,0 +1,7 @@
+
+export const BOOKING_CONSTANTS = {
+  MIN_NOTICE_DAYS: 4,
+  WEEKLY_RESET_DAY: 0, // 0 = Sunday
+  WEEKLY_RESET_TIME: '03:30', // IST Time
+  IST_OFFSET_MS: 5.5 * 60 * 60 * 1000,
+};
