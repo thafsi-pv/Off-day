@@ -196,6 +196,8 @@ const CalendarView: React.FC<{
         const year = viewDate.getUTCFullYear();
         const month = viewDate.getUTCMonth();
         const firstDayOfMonth = new Date(Date.UTC(year, month, 1)).getUTCDay();
+        // Adjust for Monday start: 0(Sun) becomes 6, 1(Mon) becomes 0
+        const adjustedStartDay = (firstDayOfMonth + 6) % 7;
         const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
 
         const now = new Date();
@@ -205,37 +207,45 @@ const CalendarView: React.FC<{
         const hour = istNow.getUTCHours(); // (in IST)
         const minute = istNow.getUTCMinutes(); // (in IST)
 
-        const [resetHour, resetMinute] = BOOKING_CONSTANTS.WEEKLY_RESET_TIME.split(':').map(Number);
+        const [resetHour, resetMinute] = (config.openingTime || BOOKING_CONSTANTS.WEEKLY_RESET_TIME).split(':').map(Number);
+        const openingDay = config.openingDay ?? BOOKING_CONSTANTS.WEEKLY_RESET_DAY;
 
         let virtualToday = new Date(istNow);
-        if (day === BOOKING_CONSTANTS.WEEKLY_RESET_DAY && (hour < resetHour || (hour === resetHour && minute < resetMinute))) {
-            // It's Sunday before 15:30 IST, stay on Saturday's schedule
+        if (day === openingDay && (hour < resetHour || (hour === resetHour && minute < resetMinute))) {
+            // It's the opening day before the opening time, stay on previous day's schedule
             virtualToday.setUTCDate(virtualToday.getUTCDate() - 1);
         }
 
         const today = new Date(Date.UTC(virtualToday.getUTCFullYear(), virtualToday.getUTCMonth(), virtualToday.getUTCDate()));
 
+        const minNoticeDays = config.minNoticeDays ?? BOOKING_CONSTANTS.MIN_NOTICE_DAYS;
         const minDate = new Date(today.getTime());
-        minDate.setUTCDate(minDate.getUTCDate() + BOOKING_CONSTANTS.MIN_NOTICE_DAYS);
+        minDate.setUTCDate(minDate.getUTCDate() + minNoticeDays);
 
         const maxDate = new Date(today.getTime());
-        const dayOfWeek = today.getUTCDay();
+        const dayOfWeek = today.getUTCDay(); // 0=Sun, 1=Mon...
+        const daysToNextSunday = (7 - dayOfWeek) % 7; 
 
         switch (config.weekRange) {
             case '1_WEEK':
-                maxDate.setUTCDate(today.getUTCDate() + (6 - dayOfWeek));
+                maxDate.setUTCDate(today.getUTCDate() + daysToNextSunday);
                 break;
             case '2_WEEKS':
-                maxDate.setUTCDate(today.getUTCDate() + (6 - dayOfWeek) + 7);
+                maxDate.setUTCDate(today.getUTCDate() + daysToNextSunday + 7);
                 break;
             case '1_MONTH':
-                maxDate.setUTCDate(today.getUTCDate() + 30);
+                // Monthly should work calendar-wise for the current month? 
+                // Or just +30 days as requested? 
+                // "When slot booking is set to monthly, it should work calendar-wise"
+                // This usually means the current month.
+                const nextMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0));
+                maxDate.setTime(nextMonth.getTime());
                 break;
         }
 
 
         const dayCells = [];
-        for (let i = 0; i < firstDayOfMonth; i++) {
+        for (let i = 0; i < adjustedStartDay; i++) {
             dayCells.push(<div key={`empty-start-${i}`} role="gridcell" className="p-2"></div>);
         }
 
@@ -248,12 +258,13 @@ const CalendarView: React.FC<{
             const isPast = currentDate < minDate;
             const isFutureDisabled = currentDate > maxDate;
             const isDayDisabledByConfig = config.disabledDays.includes(currentDate.getUTCDay());
+            const isBlockedDate = config.blockedDates?.includes(dateString);
             const leaveOnDate = leavesByDate.get(dateString);
             const isWeekBooked = bookedWeeks.has(getStartOfWeekUTC(currentDate)) && (!leaveOnDate || (leaveOnDate.status !== LeaveStatus.APPROVED && leaveOnDate.status !== LeaveStatus.PENDING));
 
             const daySlotInfo = slotInfo[dateString];
             const hasSlots = daySlotInfo && daySlotInfo.availableSlots > 0;
-            const isDisabled = isPast || isFutureDisabled || isDayDisabledByConfig || (daySlotInfo && !hasSlots) || isWeekBooked || (leaveOnDate && leaveOnDate.status !== LeaveStatus.REJECTED);
+            const isDisabled = isPast || (isFutureDisabled && !isSelected) || isDayDisabledByConfig || isBlockedDate || (daySlotInfo && !hasSlots) || isWeekBooked || (leaveOnDate && leaveOnDate.status !== LeaveStatus.REJECTED);
 
 
             let dayClass = '';
@@ -320,13 +331,13 @@ const CalendarView: React.FC<{
             </div>
             <div role="grid" aria-labelledby="calendar-heading">
                 <div role="row" className="grid grid-cols-7 gap-2 text-center text-xs text-muted-foreground">
-                    <div role="columnheader" aria-label="Sunday"><span aria-hidden="true">Sun</span></div>
                     <div role="columnheader" aria-label="Monday"><span aria-hidden="true">Mon</span></div>
                     <div role="columnheader" aria-label="Tuesday"><span aria-hidden="true">Tue</span></div>
                     <div role="columnheader" aria-label="Wednesday"><span aria-hidden="true">Wed</span></div>
                     <div role="columnheader" aria-label="Thursday"><span aria-hidden="true">Thu</span></div>
                     <div role="columnheader" aria-label="Friday"><span aria-hidden="true">Fri</span></div>
                     <div role="columnheader" aria-label="Saturday"><span aria-hidden="true">Sat</span></div>
+                    <div role="columnheader" aria-label="Sunday"><span aria-hidden="true">Sun</span></div>
                 </div>
                 <div className="mt-2 space-y-1" ref={gridRef} onKeyDown={handleKeyDown}>
                     {renderCalendar()}
@@ -357,25 +368,36 @@ const UserDashboard: React.FC<{ user: User }> = ({ user }) => {
             const hour = istNow.getUTCHours(); // (in IST)
             const minute = istNow.getUTCMinutes(); // (in IST)
 
-            const [resetHour, resetMinute] = BOOKING_CONSTANTS.WEEKLY_RESET_TIME.split(':').map(Number);
+            const [resetHour, resetMinute] = (currentConfig.openingTime || BOOKING_CONSTANTS.WEEKLY_RESET_TIME).split(':').map(Number);
+            const openingDay = currentConfig.openingDay ?? BOOKING_CONSTANTS.WEEKLY_RESET_DAY;
 
             let virtualToday = new Date(istNow);
-            if (day === BOOKING_CONSTANTS.WEEKLY_RESET_DAY && (hour < resetHour || (hour === resetHour && minute < resetMinute))) {
-                // It's Sunday before 15:30 IST, stay on Saturday's schedule
+            if (day === openingDay && (hour < resetHour || (hour === resetHour && minute < resetMinute))) {
+                // It's the opening day before opening time, stay on previous day's schedule
                 virtualToday.setUTCDate(virtualToday.getUTCDate() - 1);
             }
 
             const today = new Date(Date.UTC(virtualToday.getUTCFullYear(), virtualToday.getUTCMonth(), virtualToday.getUTCDate()));
-            
+
+            const minNoticeDays = currentConfig.minNoticeDays ?? BOOKING_CONSTANTS.MIN_NOTICE_DAYS;
             const minDate = new Date(today.getTime());
-            minDate.setUTCDate(minDate.getUTCDate() + BOOKING_CONSTANTS.MIN_NOTICE_DAYS);
+            minDate.setUTCDate(minDate.getUTCDate() + minNoticeDays);
 
             const maxDate = new Date(today.getTime());
-            const dayOfWeek = today.getUTCDay();
+            const dayOfWeek = today.getUTCDay(); // 0=Sun
+            const daysToNextSunday = (7 - dayOfWeek) % 7;
+
             switch (currentConfig.weekRange) {
-                case '1_WEEK': maxDate.setUTCDate(today.getUTCDate() + (6 - dayOfWeek)); break;
-                case '2_WEEKS': maxDate.setUTCDate(today.getUTCDate() + (6 - dayOfWeek) + 7); break;
-                case '1_MONTH': maxDate.setUTCDate(today.getUTCDate() + 30); break;
+                case '1_WEEK': 
+                    maxDate.setUTCDate(today.getUTCDate() + daysToNextSunday); 
+                    break;
+                case '2_WEEKS': 
+                    maxDate.setUTCDate(today.getUTCDate() + daysToNextSunday + 7); 
+                    break;
+                case '1_MONTH': 
+                    const nextMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0));
+                    maxDate.setTime(nextMonth.getTime());
+                    break;
             }
             return {
                 minDateStr: minDate.toISOString().split('T')[0],

@@ -70,3 +70,10 @@ export const useDeleteUserMutation = (options?: any) => {
     },
   });
 };
+export const useShiftsForWeek = (date: string, options?: any) => {
+  return useQuery({
+    queryKey: ['user-shifts', 'week', date],
+    queryFn: () => api.getShiftsForWeek(date),
+    ...options,
+  });
+};

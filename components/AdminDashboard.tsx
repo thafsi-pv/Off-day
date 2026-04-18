@@ -9,6 +9,7 @@ import {
   Legend,
   Bar,
 } from "recharts";
+import { format, startOfWeek, parseISO, addDays } from "date-fns";
 import { toast } from "react-hot-toast";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
@@ -64,18 +65,21 @@ import {
   useResetUserPasswordMutation,
   useUpdateUserMutation,
   useDeleteUserMutation,
+  useShiftsForWeek,
 } from "../hooks/useUsers";
 import PhoneInput from "react-phone-input-2";
 import { formatDate } from "../utils/date";
 import { ShiftManagement } from "./ShiftManagement";
 import { BOOKING_CONSTANTS } from "../utils/constants";
 
-const getStatusBadge = (status: LeaveStatus) => {
+const getStatusBadge = (status: LeaveStatus | "NOT APPLIED") => {
   switch (status) {
     case LeaveStatus.APPROVED:
       return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
     case LeaveStatus.REJECTED:
       return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
+    case "NOT APPLIED":
+      return "bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/40 dark:text-red-300";
     case LeaveStatus.PENDING:
     default:
       return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
@@ -88,79 +92,7 @@ const Skeleton = ({ className }: { className?: string }) => (
   <div className={`animate-pulse rounded-md bg-muted ${className}`} />
 );
 
-const Analytics: React.FC<{ leaves: Leave[]; shifts: Shift[] }> = ({
-  leaves,
-  shifts,
-}) => {
-  const [searchQuery, setSearchQuery] = useState("");
 
-  const data = useMemo(() => {
-    const leaveCountsByDay: {
-      [date: string]: { name: string;[shiftId: string]: any };
-    } = {};
-
-    leaves
-      .filter(
-        (l) =>
-          (l.status === LeaveStatus.APPROVED || l.status === LeaveStatus.PENDING) &&
-          (l.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (l.userMobile && l.userMobile.includes(searchQuery)))
-      )
-      .forEach((leave) => {
-        if (!leaveCountsByDay[leave.date]) {
-          leaveCountsByDay[leave.date] = {
-            name: formatDate(leave.date),
-          } as any;
-          shifts.forEach((s) => (leaveCountsByDay[leave.date][s.id] = 0));
-        }
-        leaveCountsByDay[leave.date][leave.shiftId]++;
-      });
-
-    return Object.values(leaveCountsByDay).sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
-  }, [leaves, shifts, searchQuery]);
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Leave Analytics</CardTitle>
-        <div className="flex justify-between items-center">
-          <CardDescription>
-            Overview of approved and pending leaves per day.
-          </CardDescription>
-          <Input
-            placeholder="Search by name or mobile..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-64"
-          />
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="h-[400px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Legend />
-              {shifts.map((shift, index) => (
-                <Bar
-                  key={shift.id}
-                  dataKey={shift.id}
-                  name={shift.name}
-                  fill={`hsl(220, 80%, ${60 + index * 10}%)`}
-                />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
 
 const CreateLeave: React.FC<{
   users: User[];
@@ -631,15 +563,115 @@ const LeaveManagement: React.FC<{
   );
 };
 
-const Reports: React.FC<{ leaves: Leave[] }> = ({ leaves }) => {
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [filterStatus, setFilterStatus] = useState<LeaveStatus | "ALL">("ALL");
+const NotBookedSummary: React.FC<{
+  leaves: Leave[];
+  startDate: string;
+  endDate: string;
+}> = ({ leaves, startDate, endDate }) => {
+  // Use the week of the start date, or current week if not selected
+  const targetDate = startDate || new Date().toISOString().split("T")[0];
+  const { data: assignments, isLoading } = useShiftsForWeek(targetDate);
 
+  const notBooked = useMemo(() => {
+    if (!assignments || !Array.isArray(assignments)) return [];
+
+    // Filter assignments to find users who don't have a leave in the system for this week
+    // We assume the range in reports might overlap with this week
+    const weekStart = startOfWeek(parseISO(targetDate), { weekStartsOn: 1 });
+    const weekEnd = addDays(weekStart, 6);
+
+    return assignments.filter((assign: any) => {
+      // Check if this user has ANY leave record (PENDING, APPROVED, or REJECTED) in the assigned week
+      const hasAnyLeave = leaves.some((leave) => {
+        const leaveDate = parseISO(leave.date);
+        return (
+          leave.userId === assign.user.id &&
+          leaveDate >= weekStart &&
+          leaveDate <= weekEnd
+        );
+      });
+      return !hasAnyLeave;
+    });
+  }, [assignments, leaves, targetDate]);
+
+  if (isLoading) return <div className="p-2 text-xs text-muted-foreground">Checking assignments...</div>;
+  if (!assignments || assignments?.length === 0) return null;
+
+  return (
+    <div className="mb-6 p-4 border rounded-xl bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-800/50">
+      <div className="flex items-center gap-2 mb-3">
+        <UsersIcon className="w-5 h-5 text-red-600" />
+        <h3 className="font-bold text-red-800 dark:text-red-200">
+          Not Applied for Week of {format(startOfWeek(parseISO(targetDate), { weekStartsOn: 1 }), "dd MMM yyyy")}
+        </h3>
+        <span className="ml-auto bg-red-600 text-white text-xs px-2 py-0.5 rounded-full">
+          {notBooked.length} Persons
+        </span>
+      </div>
+
+      {notBooked.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+          {notBooked.map((assign: any) => (
+            <div key={assign.user.id} className="flex flex-col p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-red-100 dark:border-red-900/50">
+              <span className="font-medium text-sm">{assign.user.name}</span>
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-[10px] text-muted-foreground">{assign.user.mobile || assign.user.email}</span>
+                <span className="text-[10px] font-bold bg-muted px-1.5 py-0.5 rounded uppercase">
+                  {assign.shift.name}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-green-600 dark:text-green-400 font-medium">All assigned employees have booked their leaves for this week! 🎉</p>
+      )}
+    </div>
+  );
+};
+
+const Reports: React.FC<{ leaves: Leave[] }> = ({ leaves }) => {
+  const [startDate, setStartDate] = useState(() => {
+    const start = new Date();
+    start.setUTCDate(1);
+    return start.toISOString().split("T")[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const end = new Date();
+    const year = end.getUTCFullYear();
+    const month = end.getUTCMonth();
+    const lastDay = new Date(Date.UTC(year, month + 1, 0));
+    return lastDay.toISOString().split("T")[0];
+  });
+  const [filterStatus, setFilterStatus] = useState<LeaveStatus | "ALL">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showNotBooked, setShowNotBooked] = useState(true);
+
+  const targetWeekDate = startDate || new Date().toISOString().split("T")[0];
+  const { data: assignments } = useShiftsForWeek(targetWeekDate);
+
+  const notBookedList = useMemo(() => {
+    if (!assignments || !Array.isArray(assignments)) return [];
+    const weekStart = startOfWeek(parseISO(targetWeekDate), { weekStartsOn: 1 });
+    const weekEnd = addDays(weekStart, 6);
+
+    return assignments.filter((assign: any) => {
+      // Synthetic rows are ONLY for people with NO entries at all. 
+      // Rejected ones from the DB will show up naturally.
+      const hasAnyEntry = leaves.some((leave) => {
+        const leaveDate = parseISO(leave.date);
+        return (
+          leave.userId === assign.user.id &&
+          leaveDate >= weekStart &&
+          leaveDate <= weekEnd
+        );
+      });
+      return !hasAnyEntry;
+    });
+  }, [assignments, leaves, targetWeekDate]);
 
   const filteredLeaves = useMemo(() => {
-    return leaves
+    const records = leaves
       .filter((leave) => {
         const leaveDate = new Date(leave.date);
         if (startDate && leaveDate < new Date(startDate)) return false;
@@ -652,9 +684,36 @@ const Reports: React.FC<{ leaves: Leave[] }> = ({ leaves }) => {
           (leave.userMobile && leave.userMobile.includes(searchQuery));
 
         return matchesSearch;
-      })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [leaves, startDate, endDate, filterStatus, searchQuery]);
+      });
+
+    const finalResults = [...records];
+
+    if (showNotBooked && (filterStatus === "ALL" || (filterStatus as any) === "NOT_APPLIED")) {
+      notBookedList.forEach(nb => {
+        // Only add if it matches search
+        if (!searchQuery || nb.user.name.toLowerCase().includes(searchQuery.toLowerCase()) || (nb.user.mobile && nb.user.mobile.includes(searchQuery))) {
+          finalResults.push({
+            id: `nb-${nb.user.id}`,
+            userId: nb.user.id,
+            userName: nb.user.name,
+            userMobile: nb.user.mobile,
+            date: targetWeekDate, // Placeholder
+            shiftId: nb.shift.id,
+            shiftName: nb.shift.name,
+            status: "NOT APPLIED" as any,
+            createdAt: new Date().toISOString(),
+            reason: "No entry found for assigned week"
+          });
+        }
+      });
+    }
+
+    return finalResults.sort((a, b) => {
+      const shiftCompare = a.shiftName.localeCompare(b.shiftName);
+      if (shiftCompare !== 0) return shiftCompare;
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+  }, [leaves, startDate, endDate, filterStatus, searchQuery, showNotBooked, notBookedList, targetWeekDate]);
 
   const handleExport = (format: "CSV" | "PDF") => {
     if (format === "PDF") {
@@ -668,15 +727,17 @@ const Reports: React.FC<{ leaves: Leave[] }> = ({ leaves }) => {
         doc.text("Leave Report", 14, 15);
 
         const tableColumn = [
-          "User",
+          "SL.No",
           "Leave Date",
+          "User Name",
           "Shift",
           "Status",
           "Applied On",
         ];
-        const tableRows = filteredLeaves.map((leave) => [
-          leave.userName,
+        const tableRows = filteredLeaves.map((leave, index) => [
+          index + 1,
           formatDate(leave.date),
+          leave.userName,
           leave.shiftName,
           leave.status,
           formatDate(leave.createdAt),
@@ -739,31 +800,47 @@ const Reports: React.FC<{ leaves: Leave[] }> = ({ leaves }) => {
               <option value={LeaveStatus.PENDING}>Pending</option>
               <option value={LeaveStatus.APPROVED}>Approved</option>
               <option value={LeaveStatus.REJECTED}>Rejected</option>
+              <option value="NOT_APPLIED">Not Applied</option>
             </Select>
           </div>
           <div className="flex items-end gap-2">
-            <Button onClick={() => handleExport("CSV")} variant="outline">
+            {/* <Button onClick={() => handleExport("CSV")} variant="outline">
               <DownloadIcon className="w-4 h-4 mr-2" /> Export CSV
-            </Button>
+            </Button> */}
             <Button onClick={() => handleExport("PDF")} variant="outline">
               <DownloadIcon className="w-4 h-4 mr-2" /> Export PDF
             </Button>
           </div>
-          <div className="w-full mt-2">
-            <Input
-              placeholder="Search by name or mobile..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full"
-            />
+          <div className="w-full mt-2 flex flex-col sm:flex-row gap-4 items-end">
+            <div className="w-full">
+              <Label>Search User</Label>
+              <Input
+                placeholder="Search by name or mobile..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            {/* Added: Not Booked List Summary */}
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-200 dark:border-yellow-800/50 flex-shrink-0">
+              <span className="text-xs font-bold text-yellow-800 dark:text-yellow-200">
+                Found {filteredLeaves.length} leave records in this range.
+              </span>
+            </div>
           </div>
         </div>
+
+        {/* The summary banner remains for visibility of the specific week's missing users */}
+        {showNotBooked && (
+          <NotBookedSummary leaves={leaves} startDate={startDate} endDate={endDate} />
+        )}
         <div className="border rounded-lg max-h-[60vh] overflow-auto dark:border-border/50">
           <table className="w-full min-w-[600px] text-sm text-left">
             <thead className="bg-muted/50 sticky top-0">
               <tr>
-                <th className="p-4 font-medium">User</th>
+                <th className="p-4 font-medium w-16">SL.No</th>
                 <th className="p-4 font-medium">Leave Date</th>
+                <th className="p-4 font-medium">User Name</th>
                 <th className="p-4 font-medium">Shift</th>
                 <th className="p-4 font-medium">Status</th>
                 <th className="p-4 font-medium">Applied On</th>
@@ -771,19 +848,20 @@ const Reports: React.FC<{ leaves: Leave[] }> = ({ leaves }) => {
             </thead>
             <tbody>
               {filteredLeaves.length > 0 ? (
-                filteredLeaves.map((leave) => (
-                  <tr key={leave.id} className="border-b last:border-0 dark:border-border/50">
-                    <td className="p-4">{leave.userName}</td>
+                filteredLeaves.map((leave, index) => (
+                  <tr key={leave.id} className="border-b last:border-0 dark:border-border/50 hover:bg-muted/30">
+                    <td className="p-4 font-mono">{index + 1}</td>
                     <td className="p-4">{formatDate(leave.date)}</td>
+                    <td className="p-4 font-medium">{leave.userName}</td>
                     <td className="p-4">
-                      <p className="text-sm text-muted-foreground">
+                      <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-xs">
                         {leave.shiftName}
-                      </p>
+                      </span>
                     </td>
                     <td className="p-4">
                       <span
                         className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadge(
-                          leave.status
+                          leave.status as any
                         )}`}>
                         {leave.status}
                       </span>
@@ -792,8 +870,15 @@ const Reports: React.FC<{ leaves: Leave[] }> = ({ leaves }) => {
                           Reason: {leave.reason}
                         </p>
                       )}
+                      {leave.status === ("NOT APPLIED" as any) && (
+                        <p className="text-[10px] text-red-400 mt-1 italic leading-tight">
+                          Assigned shift missing booking
+                        </p>
+                      )}
                     </td>
-                    <td className="p-4">{formatDate(leave.createdAt)}</td>
+                    <td className="p-4 text-xs text-muted-foreground">
+                      {leave.status === ("NOT APPLIED" as any) ? "-" : formatDate(leave.createdAt)}
+                    </td>
                   </tr>
                 ))
               ) : (
@@ -864,6 +949,25 @@ const Settings: React.FC<{
     });
   };
 
+  const handleAddBlockedDate = (date: string) => {
+    if (!date) return;
+    if (localConfig.blockedDates.includes(date)) {
+      toast.error("Date already blocked");
+      return;
+    }
+    setLocalConfig({
+      ...localConfig,
+      blockedDates: [...localConfig.blockedDates, date].sort(),
+    });
+  };
+
+  const handleRemoveBlockedDate = (date: string) => {
+    setLocalConfig({
+      ...localConfig,
+      blockedDates: localConfig.blockedDates.filter((d) => d !== date),
+    });
+  };
+
   const handleSave = () => {
     onSave(localConfig);
   };
@@ -887,48 +991,147 @@ const Settings: React.FC<{
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label>User Date Range</Label>
-          <Select
-            value={localConfig.weekRange}
-            onChange={(e) =>
-              setLocalConfig({
-                ...localConfig,
-                weekRange: e.target.value as Config["weekRange"],
-              })
-            }>
-            <option value="1_WEEK">1 Week</option>
-            <option value="2_WEEKS">2 Weeks</option>
-            <option value="1_MONTH">1 Month</option>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>Disabled Days for Leave</Label>
-          <div className="flex gap-2 flex-wrap">
-            {weekDays.map((day) => (
-              <Button
-                key={day.value}
-                variant={
-                  localConfig.disabledDays.includes(day.value)
-                    ? "destructive"
-                    : "outline"
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>User Date Range (Calendar Scope)</Label>
+              <Select
+                value={localConfig.weekRange}
+                onChange={(e) =>
+                  setLocalConfig({
+                    ...localConfig,
+                    weekRange: e.target.value as Config["weekRange"],
+                  })
+                }>
+                <option value="1_WEEK">1 Week</option>
+                <option value="2_WEEKS">2 Weeks</option>
+                <option value="1_MONTH">1 Month</option>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Slot Opening Day</Label>
+              <Select
+                value={localConfig.openingDay}
+                onChange={(e) =>
+                  setLocalConfig({
+                    ...localConfig,
+                    openingDay: Number(e.target.value),
+                  })
+                }>
+                {weekDays.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Slot Opening Time (IST)</Label>
+              <Input
+                type="time"
+                value={localConfig.openingTime}
+                onChange={(e) =>
+                  setLocalConfig({
+                    ...localConfig,
+                    openingTime: e.target.value,
+                  })
                 }
-                onClick={() => handleDayToggle(day.value)}>
-                {day.label}
-              </Button>
-            ))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Notice Period (Gap Days) *</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="0"
+                  max="14"
+                  value={localConfig.minNoticeDays}
+                  onChange={(e) =>
+                    setLocalConfig({
+                      ...localConfig,
+                      minNoticeDays: Number(e.target.value),
+                    })
+                  }
+                  className="w-24"
+                />
+                <span className="text-sm text-muted-foreground">
+                  Days (e.g. 2 means 1 day gap)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Disabled Weekdays</Label>
+              <div className="flex gap-2 flex-wrap text-xs">
+                {weekDays.map((day) => (
+                  <Button
+                    key={day.value}
+                    size="sm"
+                    variant={
+                      localConfig.disabledDays.includes(day.value)
+                        ? "destructive"
+                        : "outline"
+                    }
+                    onClick={() => handleDayToggle(day.value)}>
+                    {day.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Block Specific Dates (Calendar-wise)</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="date"
+                  id="target-blocked-date"
+                  className="flex-grow"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const el = document.getElementById("target-blocked-date") as HTMLInputElement;
+                    handleAddBlockedDate(el.value);
+                    el.value = "";
+                  }}>
+                  Block Date
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {localConfig.blockedDates?.map((date) => (
+                  <span
+                    key={date}
+                    className="flex items-center gap-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 px-2 py-1 rounded-md text-xs">
+                    {formatDate(date)}
+                    <button
+                      onClick={() => handleRemoveBlockedDate(date)}
+                      className="hover:text-red-600 font-bold">
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-        <div className="space-y-4">
+
+        <div className="space-y-4 pt-4 border-t dark:border-border/50">
           <div className="flex justify-between items-center">
-            <Label>Shifts & Slots</Label>
+            <Label className="text-lg font-bold">Shifts & Slots</Label>
             <Button size="sm" onClick={handleAddShift}>
               Add Shift
             </Button>
           </div>
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {localConfig.shifts.map((shift) => (
-              <div key={shift.id} className="flex items-center gap-2">
+              <div
+                key={shift.id}
+                className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30 dark:border-border/50">
                 <Input
                   value={shift.name}
                   onChange={(e) =>
@@ -936,28 +1139,32 @@ const Settings: React.FC<{
                   }
                   className="flex-grow"
                 />
-                <Input
-                  type="number"
-                  value={shift.slots}
-                  onChange={(e) =>
-                    handleShiftChange(shift.id, "slots", e.target.value)
-                  }
-                  className="w-20"
-                  min="0"
-                />
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">Slots:</span>
+                  <Input
+                    type="number"
+                    value={shift.slots}
+                    onChange={(e) =>
+                      handleShiftChange(shift.id, "slots", e.target.value)
+                    }
+                    className="w-16"
+                    min="0"
+                  />
+                </div>
                 <Button
                   variant="destructive"
                   size="icon"
+                  className="h-8 w-8"
                   onClick={() => handleRemoveShift(shift.id)}>
-                  <span className="text-xl">×</span>
+                  <span className="text-lg">×</span>
                 </Button>
               </div>
             ))}
           </div>
         </div>
 
-        <Button onClick={handleSave} disabled={isLoading}>
-          {isLoading ? "Saving..." : "Save Settings"}
+        <Button onClick={handleSave} disabled={isLoading} className="w-full">
+          {isLoading ? "Saving..." : "Save Configuration"}
         </Button>
       </CardContent>
     </Card>
@@ -1437,7 +1644,6 @@ const PermissionManagement: React.FC<{
 
   // Available tabs to control access to
   const availableTabs = [
-    { id: "analytics", label: "Analytics" },
     { id: "management", label: "Leaves Management" },
     { id: "create", label: "Create Leave" },
     { id: "users", label: "User Management" },
@@ -1723,13 +1929,6 @@ const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
             >
               <HomeIcon className="w-4 h-4 mr-2" /> My Dashboard
             </TabsTrigger>
-            {hasAccess("analytics") && (
-              <TabsTrigger
-                onClick={() => setActiveTab("analytics")}
-                active={activeTab === "analytics"}>
-                <BarChartIcon className="w-4 h-4 mr-2" /> Analytics
-              </TabsTrigger>
-            )}
             {hasAccess("management") && (
               <TabsTrigger
                 onClick={() => setActiveTab("management")}
@@ -1782,73 +1981,70 @@ const AdminDashboard: React.FC<{ user: User }> = ({ user }) => {
           </TabsList>
         </div>
 
-        {activeTab === "dashboard" && (
-          <TabsContent>
-            <UserDashboard user={user} />
-          </TabsContent>
-        )}
+        <div className={activeTab === "dashboard" ? "w-full" : "max-w-6xl mx-auto w-full px-2 sm:px-4"}>
+          {activeTab === "dashboard" && (
+            <TabsContent>
+              <UserDashboard user={user} />
+            </TabsContent>
+          )}
 
-        {hasAccess("analytics") && activeTab === "analytics" && (
-          <TabsContent>
-            <Analytics leaves={allLeaves} shifts={config.shifts} />
-          </TabsContent>
-        )}
-        {hasAccess("management") && activeTab === "management" && (
-          <TabsContent>
-            <LeaveManagement
-              leaves={allLeaves}
-              onStatusChange={handleStatusChange}
-              onBulkStatusChange={handleBulkStatusChange}
-              isActionLoading={isActionLoading}
-            />
-          </TabsContent>
-        )}
+          {hasAccess("management") && activeTab === "management" && (
+            <TabsContent>
+              <LeaveManagement
+                leaves={allLeaves}
+                onStatusChange={handleStatusChange}
+                onBulkStatusChange={handleBulkStatusChange}
+                isActionLoading={isActionLoading}
+              />
+            </TabsContent>
+          )}
 
 
-        {hasAccess("roles") && activeTab === "roles" && (
-          <TabsContent>
-            <PermissionManagement
-              users={users}
-              onUpdatePermissions={handleUpdatePermissions}
-              isLoading={updateUserMutation.isPending}
-            />
-          </TabsContent>
-        )}
+          {hasAccess("roles") && activeTab === "roles" && (
+            <TabsContent>
+              <PermissionManagement
+                users={users}
+                onUpdatePermissions={handleUpdatePermissions}
+                isLoading={updateUserMutation.isPending}
+              />
+            </TabsContent>
+          )}
 
-        {hasAccess("create") && activeTab === "create" && (
-          <TabsContent>
-            <CreateLeave
-              users={users}
-              config={config}
-              onCreate={handleCreateLeave}
-              isLoading={isActionLoading}
-            />
-          </TabsContent>
-        )}
-        {hasAccess("users") && activeTab === "users" && (
-          <TabsContent>
-            <UserManagement />
-          </TabsContent>
-        )}
-        {hasAccess("reports") && activeTab === "reports" && (
-          <TabsContent>
-            <Reports leaves={allLeaves} />
-          </TabsContent>
-        )}
-        {hasAccess("settings") && activeTab === "settings" && (
-          <TabsContent>
-            <Settings
-              config={config}
-              onSave={handleConfigSave}
-              isLoading={isActionLoading}
-            />
-          </TabsContent>
-        )}
-        {hasAccess("shifts") && activeTab === "shifts" && (
-          <TabsContent>
-            <ShiftManagement users={users || []} shifts={config.shifts} />
-          </TabsContent>
-        )}
+          {hasAccess("create") && activeTab === "create" && (
+            <TabsContent>
+              <CreateLeave
+                users={users}
+                config={config}
+                onCreate={handleCreateLeave}
+                isLoading={isActionLoading}
+              />
+            </TabsContent>
+          )}
+          {hasAccess("users") && activeTab === "users" && (
+            <TabsContent>
+              <UserManagement />
+            </TabsContent>
+          )}
+          {hasAccess("reports") && activeTab === "reports" && (
+            <TabsContent>
+              <Reports leaves={allLeaves} />
+            </TabsContent>
+          )}
+          {hasAccess("settings") && activeTab === "settings" && (
+            <TabsContent>
+              <Settings
+                config={config}
+                onSave={handleConfigSave}
+                isLoading={isActionLoading}
+              />
+            </TabsContent>
+          )}
+          {hasAccess("shifts") && activeTab === "shifts" && (
+            <TabsContent>
+              <ShiftManagement users={users || []} shifts={config.shifts} />
+            </TabsContent>
+          )}
+        </div>
       </Tabs>
     </div >
   );

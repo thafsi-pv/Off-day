@@ -56,6 +56,10 @@ export interface Config {
   disabledDays: number[]; // 0 for Sunday, 6 for Saturday
   weekRange: WeekRange;
   shifts: Shift[];
+  openingDay: number;
+  openingTime: string;
+  minNoticeDays: number;
+  blockedDates: string[];
 }
 
 export interface LeaveSlotInfo {
