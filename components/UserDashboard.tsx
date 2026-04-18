@@ -109,16 +109,17 @@ const CalendarView: React.FC<{
     }, []);
 
 
-    const bookedWeeks = useMemo(() => {
-        const weekSet = new Set<string>();
+    const bookedWeeksCount = useMemo(() => {
+        const weekMap = new Map<string, number>();
         myLeaves.forEach(leave => {
             if (leave.status === LeaveStatus.PENDING || leave.status === LeaveStatus.APPROVED) {
                 const [year, month, day] = leave.date.split('-').map(Number);
                 const leaveDate = new Date(Date.UTC(year, month - 1, day));
-                weekSet.add(getStartOfWeekUTC(leaveDate));
+                const weekStr = getStartOfWeekUTC(leaveDate);
+                weekMap.set(weekStr, (weekMap.get(weekStr) || 0) + 1);
             }
         });
-        return weekSet;
+        return weekMap;
     }, [myLeaves, getStartOfWeekUTC]);
 
     const leavesByDate = useMemo(() => {
@@ -260,7 +261,12 @@ const CalendarView: React.FC<{
             const isDayDisabledByConfig = config.disabledDays.includes(currentDate.getUTCDay());
             const isBlockedDate = config.blockedDates?.includes(dateString);
             const leaveOnDate = leavesByDate.get(dateString);
-            const isWeekBooked = bookedWeeks.has(getStartOfWeekUTC(currentDate)) && (!leaveOnDate || (leaveOnDate.status !== LeaveStatus.APPROVED && leaveOnDate.status !== LeaveStatus.PENDING));
+            
+            const weekStartStr = getStartOfWeekUTC(currentDate);
+            const leavesThisWeek = bookedWeeksCount.get(weekStartStr) || 0;
+            const weekLimitReached = config.maxLeavesPerWeek !== null && leavesThisWeek >= config.maxLeavesPerWeek;
+            
+            const isWeekBooked = weekLimitReached && (!leaveOnDate || (leaveOnDate.status !== LeaveStatus.APPROVED && leaveOnDate.status !== LeaveStatus.PENDING));
 
             const daySlotInfo = slotInfo[dateString];
             const hasSlots = daySlotInfo && daySlotInfo.availableSlots > 0;

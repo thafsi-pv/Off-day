@@ -594,12 +594,17 @@ const NotBookedSummary: React.FC<{
     });
   }, [assignments, leaves, targetDate]);
 
+  const [isExpanded, setIsExpanded] = useState(false);
+
   if (isLoading) return <div className="p-2 text-xs text-muted-foreground">Checking assignments...</div>;
   if (!assignments || assignments?.length === 0) return null;
 
   return (
     <div className="mb-6 p-4 border rounded-xl bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-800/50">
-      <div className="flex items-center gap-2 mb-3">
+      <div 
+        className="flex items-center gap-2 mb-2 cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
         <UsersIcon className="w-5 h-5 text-red-600" />
         <h3 className="font-bold text-red-800 dark:text-red-200">
           Not Applied for Week of {format(startOfWeek(parseISO(targetDate), { weekStartsOn: 1 }), "dd MMM yyyy")}
@@ -607,24 +612,31 @@ const NotBookedSummary: React.FC<{
         <span className="ml-auto bg-red-600 text-white text-xs px-2 py-0.5 rounded-full">
           {notBooked.length} Persons
         </span>
+        <Button variant="ghost" size="sm" className="h-6 text-xs text-red-700 hover:text-red-800 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/50">
+          {isExpanded ? "Collapse" : "Expand"}
+        </Button>
       </div>
 
-      {notBooked.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-          {notBooked.map((assign: any) => (
-            <div key={assign.user.id} className="flex flex-col p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-red-100 dark:border-red-900/50">
-              <span className="font-medium text-sm">{assign.user.name}</span>
-              <div className="flex justify-between items-center mt-1">
-                <span className="text-[10px] text-muted-foreground">{assign.user.mobile || assign.user.email}</span>
-                <span className="text-[10px] font-bold bg-muted px-1.5 py-0.5 rounded uppercase">
-                  {assign.shift.name}
-                </span>
-              </div>
+      {isExpanded && (
+        <div className="pt-2">
+          {notBooked.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              {notBooked.map((assign: any) => (
+                <div key={assign.user.id} className="flex flex-col p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-red-100 dark:border-red-900/50">
+                  <span className="font-medium text-sm">{assign.user.name}</span>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-[10px] text-muted-foreground">{assign.user.mobile || assign.user.email}</span>
+                    <span className="text-[10px] font-bold bg-muted px-1.5 py-0.5 rounded uppercase">
+                      {assign.shift.name}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          ) : (
+            <p className="text-sm text-green-600 dark:text-green-400 font-medium">All assigned employees have booked their leaves for this week! 🎉</p>
+          )}
         </div>
-      ) : (
-        <p className="text-sm text-green-600 dark:text-green-400 font-medium">All assigned employees have booked their leaves for this week! 🎉</p>
       )}
     </div>
   );
@@ -1059,6 +1071,28 @@ const Settings: React.FC<{
                 />
                 <span className="text-sm text-muted-foreground">
                   Days (e.g. 2 means 1 day gap)
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Max Leaves per Week</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="1"
+                  value={localConfig.maxLeavesPerWeek === null ? "" : localConfig.maxLeavesPerWeek}
+                  onChange={(e) =>
+                    setLocalConfig({
+                      ...localConfig,
+                      maxLeavesPerWeek: e.target.value === "" ? null : Number(e.target.value),
+                    })
+                  }
+                  className="w-24"
+                  placeholder="Unlimited"
+                />
+                <span className="text-sm text-muted-foreground">
+                  Leave blank for unlimited
                 </span>
               </div>
             </div>
