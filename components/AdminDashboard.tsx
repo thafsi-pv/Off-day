@@ -133,6 +133,26 @@ const CreateLeave: React.FC<{
       toast.error("Please select a shift");
       return;
     }
+    
+    // Boundary blocking validation
+    const targetDateObj = new Date(selectedDate);
+    if(targetDateObj.getTime() !== targetDateObj.getTime()) {
+        toast.error("Invalid date");
+        return;
+    }
+    
+    // Adjust strictly to match UTC offset arithmetic mapping week limits
+    const dateStrCheck = targetDateObj.toISOString().split("T")[0];
+    if (config.blockedDates?.includes(dateStrCheck)) {
+        toast.error("This date is strictly blocked by the system configuration.");
+        return;
+    }
+    
+    const dayOfWeek = targetDateObj.getUTCDay();
+    if (config.disabledDays?.includes(dayOfWeek)) {
+        toast.error("Leave applications are not allowed on this day of the week.");
+        return;
+    }
 
     onCreate({
       userId: selectedUserId,
@@ -149,7 +169,7 @@ const CreateLeave: React.FC<{
     setSelectedShiftId("");
   };
 
-  const minDate = (() => {
+  const { minDate, maxDateStr } = (() => {
     const now = new Date();
     const istNow = new Date(now.getTime() + BOOKING_CONSTANTS.IST_OFFSET_MS);
 
@@ -157,14 +177,48 @@ const CreateLeave: React.FC<{
     const hour = istNow.getUTCHours(); // (in IST)
     const minute = istNow.getUTCMinutes(); // (in IST)
 
-    const [resetHour, resetMinute] = BOOKING_CONSTANTS.WEEKLY_RESET_TIME.split(':').map(Number);
+    const [resetHour, resetMinute] = (config.openingTime || BOOKING_CONSTANTS.WEEKLY_RESET_TIME).split(':').map(Number);
+    const openingDay = config.openingDay ?? BOOKING_CONSTANTS.WEEKLY_RESET_DAY;
 
     let virtualToday = new Date(istNow);
-    if (day === BOOKING_CONSTANTS.WEEKLY_RESET_DAY && (hour < resetHour || (hour === resetHour && minute < resetMinute))) {
-      // It's Sunday before 15:30 IST, stay on Saturday's schedule
+    if (day === openingDay && (hour < resetHour || (hour === resetHour && minute < resetMinute))) {
+      // It's Sunday before opening time, stay on previous day's schedule
       virtualToday.setUTCDate(virtualToday.getUTCDate() - 1);
     }
-    return virtualToday.toISOString().split("T")[0];
+    
+    const today = new Date(Date.UTC(virtualToday.getUTCFullYear(), virtualToday.getUTCMonth(), virtualToday.getUTCDate()));
+    
+    const minNoticeDays = config.minNoticeDays ?? BOOKING_CONSTANTS.MIN_NOTICE_DAYS;
+    const minAllowedDate = new Date(today.getTime());
+    minAllowedDate.setUTCDate(minAllowedDate.getUTCDate() + minNoticeDays);
+    
+    // Generate maximum date based on WeekRange logic similar to UserDashboard constraints
+    const maxDate = new Date(today.getTime());
+    const currentDayOfWeek = today.getUTCDay(); // 0=Sun
+    const daysToNextSunday = (7 - currentDayOfWeek) % 7;
+    
+    switch (config.weekRange) {
+        case '1_WEEK': 
+            maxDate.setUTCDate(today.getUTCDate() + daysToNextSunday); 
+            break;
+        case '2_WEEKS': 
+            maxDate.setUTCDate(today.getUTCDate() + daysToNextSunday + 7); 
+            break;
+        case '3_WEEKS': 
+            maxDate.setUTCDate(today.getUTCDate() + daysToNextSunday + 14); 
+            break;
+        case '1_MONTH': 
+            const nextMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0));
+            maxDate.setTime(nextMonth.getTime());
+            break;
+        default:
+            maxDate.setUTCDate(today.getUTCDate() + daysToNextSunday);
+    }
+
+    return { 
+        minDate: minAllowedDate.toISOString().split("T")[0],
+        maxDateStr: maxDate.toISOString().split("T")[0]
+    };
   })();
 
   return (
@@ -237,6 +291,7 @@ const CreateLeave: React.FC<{
                 setSelectedShiftId(""); // Reset shift when date changes
               }}
               min={minDate}
+              max={maxDateStr}
               required
             />
           </div>
@@ -1017,6 +1072,7 @@ const Settings: React.FC<{
                 }>
                 <option value="1_WEEK">1 Week</option>
                 <option value="2_WEEKS">2 Weeks</option>
+                <option value="3_WEEKS">3 Weeks</option>
                 <option value="1_MONTH">1 Month</option>
               </Select>
             </div>

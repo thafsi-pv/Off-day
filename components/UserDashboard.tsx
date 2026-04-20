@@ -234,6 +234,9 @@ const CalendarView: React.FC<{
             case '2_WEEKS':
                 maxDate.setUTCDate(today.getUTCDate() + daysToNextSunday + 7);
                 break;
+            case '3_WEEKS':
+                maxDate.setUTCDate(today.getUTCDate() + daysToNextSunday + 14);
+                break;
             case '1_MONTH':
                 // Monthly should work calendar-wise for the current month? 
                 // Or just +30 days as requested? 
